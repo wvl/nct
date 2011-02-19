@@ -1,0 +1,5 @@
+{ "name": "nct"
+, "description": "Flexible, powerful, asynchronous templates for node.js and the browser."
+, "version": "0.0.1"
+, "main": "./lib/nct.js"
+}
