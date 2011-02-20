@@ -67,14 +67,18 @@ do ->
   each = (name, command) ->
     return (context, callback) ->
       context.get name, (err, loopvar) ->
-        pending = loopvar.length
-        output = ""
-        return callback(null, output) if pending == 0
-        loopvar.forEach (item) ->
-          command context.push(item), (err, result) ->
-            output += result
-            if --pending == 0
-              callback(null, output)
+        if _.isArray(loopvar)
+          pending = loopvar.length
+          output = ""
+          return callback(null, output) if pending == 0
+          loopvar.forEach (item) ->
+            command context.push(item), (err, result) ->
+              output += result
+              if --pending == 0
+                callback(null, output)
+        else
+          command context.push(loopvar), (err, result) ->
+            callback(null, result)
 
   block = (name, command) ->
     return (context, callback) ->
@@ -91,6 +95,12 @@ do ->
         command context, (err, result) ->
           base context, (err, result) ->
             callback(null, result)
+
+  include = (name) ->
+    return (context, callback) ->
+      nct.load name, (err, included) ->
+        included context, (err, result) ->
+          callback(null, result)
 
 
 class Context

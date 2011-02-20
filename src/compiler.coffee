@@ -3,8 +3,8 @@ exports.tokenize = (str) ->
   # /\{\{(.*?)\}\}|\{(\#|if|else|extends|block)(.*?)\}\s*|\{\/(if|extends|block)(.*?)\}\s*/gi
   regex = ///
       \{(.*?)\}
-    | ^\s*\.(if|each|extends|block|stamp)(.*?)$\n?
-    | ^\s*\./(if|each|block|stamp)(.*?)$\n?
+    | ^\s*\.(if|\#|\>|extends|block|stamp)(.*?)$\n?
+    | ^\s*\./(if|\#|block|stamp)(.*?)$\n?
   ///gim
   index = 0
   lastIndex = null
@@ -62,9 +62,12 @@ builders =
       null
     "doif('#{key}', #{body})" #, #{elsebody})"
 
-  'each': (key, tokens) ->
-    body = process_nodes tokens, (tag) -> tag=='endeach'
+  '#': (key, tokens) ->
+    body = process_nodes tokens, (tag) -> tag=='end#'
     "each('#{key}', #{body})"
+
+  '>': (key, tokens) ->
+    "include('#{key}')"
 
   'extends': (key, tokens) ->
     body = process_nodes tokens

@@ -37,6 +37,7 @@ renderTests =
   "If Multi": ['''doif('newuser', multi(get('greeting'),write('new user\\n')))''',
     {'newuser': true, 'greeting': 'Hello '}, "Hello new user\n"]
   "Each": ["each('post', get('title'))", {'post': [{title: 'Hello'}, {title: 'World'}]}, "HelloWorld"]
+  "Each object": ["each('person', get('name'))", {'person': {name: 'Joe'}}, "Joe"]
 
 for name,attrs of renderTests
   do (name, attrs) ->
@@ -91,8 +92,8 @@ compileAndRenderTests = [
   ["Hello", {}, "Hello"]
   ["Hello {title}", {title: "World!"}, "Hello World!"]
   [".if doit\n{name}\n./if", {doit: true, name: "Joe"}, "Joe\n"]
-  [".each posts\n{title}\n./each", {posts: [{'title': 'Hello'},{'title':'World'}]}, "Hello\nWorld\n"]
-  [".each posts\n{title}\n./each", {posts: [{'title': 'Hello'},{'title':'World'}]}, "Hello\nWorld\n"]
+  [".# posts\n{title}\n./#", {posts: [{'title': 'Hello'},{'title':'World'}]}, "Hello\nWorld\n"]
+  [".# posts\n{title}\n./#", {posts: [{'title': 'Hello'},{'title':'World'}]}, "Hello\nWorld\n"]
 ]
 
 compileAndRenderTests.forEach ([tmpl,ctx,toequal]) ->
@@ -107,4 +108,11 @@ module.exports["CompAndRender extends"] = (test) ->
   nct.loadTemplate "Base\n.block main\nBase\n./block", "base"
   nct.render "t", {}, (err, result) ->
     test.same "Base\nt\n", result
+    test.done()
+
+module.exports["CompAndRender include"] = (test) ->
+  nct.loadTemplate ".> sub", "t"
+  nct.loadTemplate "{title}", "sub"
+  nct.render "t", {title: "Hello"}, (err, result) ->
+    test.same "Hello", result
     test.done()
