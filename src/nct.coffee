@@ -63,8 +63,7 @@ do ->
         output = ""
         return callback(null, output) if pending == 0
         loopvar.forEach (item) ->
-          context.push(item)
-          command context, (err, result) ->
+          command context.push(item), (err, result) ->
             output += result
             if --pending == 0
               callback(null, output)
@@ -73,24 +72,30 @@ do ->
   nct.register = (name, templateString) ->
     templates[name] = eval(templateString)
 
-module.exports = nct
 
 class Context
-  constructor: (ctx) ->
-    @stack = []
-    @push(ctx) if ctx
+  constructor: (ctx, @tail) ->
+    @head = ctx
 
-  get: (name, callback) ->
-    if result = _.detect @stack, ((ctx) -> ctx[name] != undefined)
-      callback null, result[name]
-    else
-      callback "#{name} not found", null
+  wrap: (context) ->
+    return context if context instanceof Context
+    return new Context(new Stack(context))
 
-  push: (ctx) ->
-    # @stack.push(ctx)
-    @stack.unshift(ctx)
-    this
+  get: (key, callback) ->
+    ctx = this
+    while ctx
+      if !_.isArray(ctx.head) && typeof ctx.head == "object"
+        value = ctx.head[key]
+        if value != undefined
+          if _.isFunction(value)
+            return value(callback)
+          else
+            return callback(null, value)
+      ctx = ctx.tail
+    return callback(null, null)
 
-  pop: ->
-    @stack.shift()
+  push: (newctx) ->
+    return new Context(newctx, this)
 
+module.exports = nct
+module.exports.Context = Context

@@ -12,6 +12,29 @@ renderTests =
   "Multi 1": ["multi(write('hello '))", {name: 'World'}, "hello "]
   "Each": ["each('post', get('title'))", {'post': [{title: 'Hello'}, {title: 'World'}]}, "HelloWorld"]
 
+module.exports =
+  "New Context": (test) ->
+    ctx = new nct.Context({"title": "hello"})
+    ctx.get 'title', (err, result) ->
+      test.same "hello", result
+      test.done()
+
+  "Context push": (test) ->
+    ctx = new nct.Context({"title": "hello"})
+    ctx = ctx.push({"post": "Hi"})
+    ctx.get 'title', (err, result) ->
+      test.same "hello", result
+      ctx.get 'post', (err, result) ->
+        test.same 'Hi', result
+        test.done()
+
+  "Async function in context": (test) ->
+    fn = (cb) ->
+      process.nextTick () -> cb(null, "Hi Async!")
+    ctx = new nct.Context({"title": fn})
+    ctx.get 'title', (err, result) ->
+      test.same "Hi Async!", result
+      test.done()
 
 for name,attrs of renderTests
   do (name, attrs) ->
