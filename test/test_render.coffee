@@ -34,9 +34,7 @@ renderTests =
     {'newuser': false, 'name': 'joe'}, "joe"]
   "Multi": ["multi(write('hello '), get('name'))", {name: 'World'}, "hello World"]
   "Multi 1": ["multi(write('hello '))", {name: 'World'}, "hello "]
-  "If Multi": ['''
-doif('newuser', multi(get('greeting'),write('new user\\n')))
-''',
+  "If Multi": ['''doif('newuser', multi(get('greeting'),write('new user\\n')))''',
     {'newuser': true, 'greeting': 'Hello '}, "Hello new user\n"]
   "Each": ["each('post', get('title'))", {'post': [{title: 'Hello'}, {title: 'World'}]}, "HelloWorld"]
 
@@ -48,13 +46,29 @@ for name,attrs of renderTests
         test.same attrs[2], result
         test.done()
 
+module.exports["render: extends"] = (test) ->
+  nct.register "edge", "extend('base', block('main', multi(get('title'))))"
+  nct.register "base", "multi(write('base + '),block('main', multi(write('base'))))"
+  nct.render "edge", {title: "Hello"}, (err, result) ->
+    test.same "base + Hello", result
+    test.done()
+
+module.exports["render: extends 3 levels"] = (test) ->
+  nct.register "edge", "extend('t', multi(write('Blah')))"
+  nct.register "t", "extend('base', block('main', multi(get('title'))))"
+  nct.register "base", "multi(write('base + '),block('main', write('base')))"
+  nct.render "edge", {title: "Hello"}, (err, result) ->
+    test.same "base + Hello", result
+    test.done()
+
 tokenizeTests = [
   ["hello", [['text', 'hello']]],
   ["{title}", [['vararg', 'title']]]
   [".if title", [['if', 'title']]]
-  [".if title\n/if", [['if', 'title'], ['endif', null]]]
-  ["  .if title\n  /if title\n", [['if', 'title'], ['endif', null]]]
-  [".if title\n{title}\n/if title\n", [['if', 'title'], ['vararg','title'], ['text','\n'], ['endif', null]]]
+  [".if title\n./if", [['if', 'title'], ['endif', null]]]
+  ["  .if title\n  ./if title\n", [['if', 'title'], ['endif', null]]]
+  [".if title\n{title}\n./if title\n", [['if', 'title'], ['vararg','title'], ['text','\n'], ['endif', null]]]
+  [".extends base\n.block main\n./block", [['extends', 'base'], ['block', 'main'], ['endblock',null]]]
 ]
 
 tokenizeTests.forEach ([str, tokens]) ->
@@ -65,7 +79,7 @@ tokenizeTests.forEach ([str, tokens]) ->
 compileTests = [
   ["{title}", "get('title')"]
   ["hello {title}", "multi(write('hello '),get('title'))"]
-  [".if title\n{title}\n/if", "doif('title', multi(get('title'),write('\\n')))"]
+  [".if title\n{title}\n./if", "doif('title', multi(get('title'),write('\\n')))"]
 ]
 compileTests.forEach ([tmpl, compiled]) ->
   module.exports["compile: #{tmpl.replace(/\n/g, ' | ')}"] = (test) ->
@@ -76,7 +90,9 @@ compileTests.forEach ([tmpl, compiled]) ->
 compileAndRenderTests = [
   ["Hello", {}, "Hello"]
   ["Hello {title}", {title: "World!"}, "Hello World!"]
-  [".if doit\n{name}\n/if", {doit: true, name: "Joe"}, "Joe\n"]
+  [".if doit\n{name}\n./if", {doit: true, name: "Joe"}, "Joe\n"]
+  [".each posts\n{title}\n./each", {posts: [{'title': 'Hello'},{'title':'World'}]}, "Hello\nWorld\n"]
+  [".each posts\n{title}\n./each", {posts: [{'title': 'Hello'},{'title':'World'}]}, "Hello\nWorld\n"]
 ]
 
 compileAndRenderTests.forEach ([tmpl,ctx,toequal]) ->
@@ -85,3 +101,10 @@ compileAndRenderTests.forEach ([tmpl,ctx,toequal]) ->
     nct.render "t", ctx, (err, result) ->
       test.same toequal, result
       test.done()
+
+module.exports["CompAndRender extends"] = (test) ->
+  nct.loadTemplate ".extends base\nHello\n.block main\nt\n./block", "t"
+  nct.loadTemplate "Base\n.block main\nBase\n./block", "base"
+  nct.render "t", {}, (err, result) ->
+    test.same "Base\nt\n", result
+    test.done()

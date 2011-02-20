@@ -73,10 +73,27 @@ do ->
             if --pending == 0
               callback(null, output)
 
+  block = (name, command) ->
+    return (context, callback) ->
+      if context.blocks[name]
+        return callback(null, context.blocks[name])
+      else
+        command context, (err, result) ->
+          context.blocks[name] = result
+          callback(null, result)
+
+  extend = (name, command) ->
+    return (context, callback) ->
+      nct.load name, (err, base) ->
+        command context, (err, result) ->
+          base context, (err, result) ->
+            callback(null, result)
+
 
 class Context
   constructor: (ctx, @tail) ->
     @head = ctx
+    @blocks = if @tail then @tail.blocks else {}
 
   wrap: (context) ->
     return context if context instanceof Context
@@ -102,8 +119,8 @@ tokenize = (str) ->
   # /\{\{(.*?)\}\}|\{(\#|if|else|extends|block)(.*?)\}\s*|\{\/(if|extends|block)(.*?)\}\s*/gi
   regex = ///
       \{(.*?)\}
-    | ^\s*\.(if)(.*?)$\n?
-    | ^\s*/(if)(.*?)$\n?
+    | ^\s*\.(if|each|extends|block|stamp)(.*?)$\n?
+    | ^\s*\./(if|each|block|stamp)(.*?)$\n?
   ///gim
   index = 0
   lastIndex = null
@@ -160,6 +177,18 @@ builders =
     else
       null
     "doif('#{key}', #{body})" #, #{elsebody})"
+
+  'each': (key, tokens) ->
+    body = process_nodes tokens, (tag) -> tag=='endeach'
+    "each('#{key}', #{body})"
+
+  'extends': (key, tokens) ->
+    body = process_nodes tokens
+    "extend('#{key}', #{body})"
+
+  'block': (key, tokens) ->
+    body = process_nodes tokens, (tag) -> tag=='endblock'
+    "block('#{key}', #{body})"
 
 BS = /\\/g
 CR = /\r/g
