@@ -1,5 +1,3 @@
-# require.paths.unshift "#{__dirname}/lib"
-
 {print, debug} = require 'sys'
 {spawn, exec} = require 'child_process'
 
@@ -26,7 +24,5 @@ task 'watch', 'Run development source watcher', ->
 
 
 task "test", "Run test", ->
-  # require.paths.unshift "#{__dirname}/test/lib"
-  # process.chdir __dirname
   {reporters} = require 'nodeunit'
   reporters.default.run ['test']
