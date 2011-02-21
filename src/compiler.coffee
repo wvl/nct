@@ -3,7 +3,7 @@ exports.tokenize = (str) ->
   # /\{\{(.*?)\}\}|\{(\#|if|else|extends|block)(.*?)\}\s*|\{\/(if|extends|block)(.*?)\}\s*/gi
   regex = ///
       \{(.*?)\}
-    | ^\s*\.(if|\#|\>|extends|block|stamp)(.*?)$\n?
+    | ^\s*\.(if|\#|\>|else|extends|block|stamp)(.*?)$\n?
     | ^\s*\./(if|\#|block|stamp)(.*?)$\n?
   ///gim
   index = 0
@@ -39,7 +39,7 @@ process_nodes = (tokens, processUntilFn) ->
   while token = tokens.shift()
     break if processUntilFn && processUntilFn(token[0])
     output.push(builders[token[0]](token[1], tokens))
-  if output.length > 1 then "multi(#{output.join(',')})" else output[0]
+  if output.length > 1 then "multi([#{output.join(',')}])" else output[0]
 
 builders =
   'vararg': (token) ->
@@ -60,7 +60,7 @@ builders =
       process_nodes tokens, (tag) -> return true if tag=='endif'
     else
       null
-    "doif('#{key}', #{body})" #, #{elsebody})"
+    "doif('#{key}', #{body}" + if elsebody then ", #{elsebody})" else ")"
 
   '#': (key, tokens) ->
     body = process_nodes tokens, (tag) -> tag=='end#'

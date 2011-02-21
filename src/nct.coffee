@@ -62,13 +62,13 @@ do ->
         return elsebody(context, callback) if elsebody
         callback null, ""
 
-  multi = (commands...) ->
+  multi = (commands) ->
     return (context, callback) ->
       pending = commands.length
       return callback(null, "") if pending == 0
       results = []
-      commands.forEach (command, i) =>
-        command context, (err, result) =>
+      commands.forEach (command, i) ->
+        command context, (err, result) ->
           results[i] = result
           if --pending == 0
             callback(null, results.join(""))
@@ -143,7 +143,7 @@ class Context
       if !_.isArray(ctx.head) && typeof ctx.head == "object"
         value = ctx.head[key]
         if value != undefined
-          if _.isFunction(value)
+          if typeof value == "function"
             return value(callback)
           else
             return callback(null, value)
