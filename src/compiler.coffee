@@ -69,6 +69,10 @@ builders =
   '>': (key, tokens) ->
     "include('#{key}')"
 
+  'stamp': (key, tokens) ->
+    body = process_nodes tokens, (tag) -> tag=='endstamp'
+    "stamp('#{key}', #{body})"
+
   'extends': (key, tokens) ->
     body = process_nodes tokens
     "extend('#{key}', #{body})"

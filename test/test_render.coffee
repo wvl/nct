@@ -116,3 +116,21 @@ module.exports["CompAndRender include"] = (test) ->
   nct.render "t", {title: "Hello"}, (err, result) ->
     test.same "Hello", result
     test.done()
+
+module.exports["Stamp 1"] = (test) ->
+  nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{stamp}"
+  i = 0
+  results = [["one\n", "1"],["two\n", "2"]]
+  nct.render "{stamp}", {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}]}, (err, result) ->
+    test.same results[i], result
+    test.done() if ++i==2
+
+module.exports["Stamp 2"] = (test) ->
+  nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{year}/{slug}.html"
+  i = 0
+  results = [["one\n", "2010/first.html"],["two\n", "2011/second.html"]]
+  ctx =
+    posts: [{title: "one", year: "2010", slug: "first"}, {title: "two", year: "2011", slug: "second"}]
+  nct.render "{year}/{slug}.html", ctx, (err, result) ->
+    test.same results[i], result
+    test.done() if ++i==2

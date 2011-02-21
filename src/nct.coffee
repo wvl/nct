@@ -17,13 +17,11 @@ nct.renderTemplate = (source, context, name=null, callback) ->
 # Render template that has already been registered
 nct.render = (name, context, callback) ->
   nct.load name, (err, tmpl) ->
-    ctx = if context instanceof Context then context else new Context(context)
-    tmpl ctx, (err, result) ->
-      callback(err, result)
-
-# Compile and register source template
-nct.loadTemplate = (source, name) ->
-  nct.register(name, nct.compile(source))
+    tmpl new Context(context, tmpl), (err, result) ->
+      if tmpl.slots
+        callback(err, [result, tmpl.stamped_name()])
+      else
+        callback(err, result)
 
 # Load a template: from registry, or fallback to onLoad
 nct.load = (name, callback) ->
@@ -32,10 +30,21 @@ nct.load = (name, callback) ->
   else
     throw "Template not found: #{name}"
 
+nct.loadTemplate = (tmplStr, name) ->
+  nct.register(name, nct.compile(tmplStr))
+
 do ->
-  # Eval a compiled template in this function namespace
-  nct.register = (name, templateString) ->
-    templates[name] = eval(templateString)
+  # Compile and register a template in this function namespace
+  nct.register = (name, tmpl) ->
+    fn = eval(tmpl)
+    re = /\{(.+?)\}/g
+    while (match = re.exec(name))
+      fn.slots = {} unless fn.slots
+      fn.slots[match[1]] = null
+    if fn.slots
+      fn.stamped_name = () -> name.replace re, (matched, n) -> fn.slots[n]
+    templates[name] = fn
+
 
   write = (data) ->
     return (context, callback) ->
@@ -102,11 +111,27 @@ do ->
         included context, (err, result) ->
           callback(null, result)
 
+  stamp = (name, command) ->
+    return (context, callback) ->
+      throw "No slots defined" unless context.slots
+      context.get name, (err, result) ->
+        throw "Stamp called with non array #{result}" unless _.isArray(result)
+        _.each result, (obj) ->
+          ctx = context.push(obj)
+          pending = _.size(ctx.slots)
+          _.each ctx.slots, (value,key) ->
+            ctx.get key, (err, result) ->
+              ctx.slots[key] = result
+              if --pending == 0
+                command ctx, callback
+
+
 
 class Context
-  constructor: (ctx, @tail) ->
+  constructor: (ctx, @base, @tail) ->
     @head = ctx
     @blocks = if @tail then @tail.blocks else {}
+    @slots = @base.slots if @base
 
   wrap: (context) ->
     return context if context instanceof Context
@@ -126,7 +151,7 @@ class Context
     return callback(null, null)
 
   push: (newctx) ->
-    return new Context(newctx, this)
+    return new Context(newctx, @base, this)
 
 module.exports = nct
 module.exports.Context = Context
