@@ -1,4 +1,6 @@
-{debug,info} = require('triage')('debug')
+fs = require 'fs'
+path = require 'path'
+{debug,info} = require('triage') #('debug')
 nct = require "../lib/nct"
 
 module.exports =
@@ -135,3 +137,27 @@ module.exports["Stamp 2"] = (test) ->
   nct.render "{year}/{slug}.html", ctx, (err, result) ->
     test.same results[i], result
     test.done() if ++i==2
+
+contexts =
+  'simple': {}
+  'example':
+    title: 'Hello World'
+    post: true
+  'page':
+    title: "Hello World"
+    engine: "nct"
+
+nct.onLoad = (name, callback) ->
+  debug "onLoad called: #{name}"
+  fs.readFile path.join(__dirname, "fixtures/#{name}.nct"), (err, f) ->
+    callback(null, f.toString())
+
+["simple", "example", "page"].forEach (testname) ->
+  module.exports["Integration #{testname}"] = (test) ->
+    fs.readFile path.join(__dirname, "fixtures/#{testname}.nct"), (err, f) ->
+      nct.loadTemplate f.toString(), testname
+      fs.readFile path.join(__dirname, "fixtures/#{testname}.json"), (err, f) ->
+        nct.render testname, contexts[testname], (err, result) ->
+          fs.readFile path.join(__dirname, "fixtures/#{testname}.txt"), (err, f) ->
+            test.same(f.toString(), result)
+            test.done()

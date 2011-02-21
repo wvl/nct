@@ -1,0 +1,8 @@
+.extends _base
+.block head
+<script src="test.js" />
+./block
+.block body
+<h1>{title}</h1>
+./block body
+

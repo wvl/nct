@@ -1,0 +1,9 @@
+<html>
+  <head>
+<script src="test.js" />
+  </head>
+  <body>
+<h1>Hello World</h1>
+<p class='footer'>Made with nct</p>
+  </body>
+</html>

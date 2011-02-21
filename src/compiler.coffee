@@ -1,3 +1,4 @@
+{debug,info} = require 'triage'
 
 exports.tokenize = (str) ->
   # /\{\{(.*?)\}\}|\{(\#|if|else|extends|block)(.*?)\}\s*|\{\/(if|extends|block)(.*?)\}\s*/gi
@@ -14,16 +15,11 @@ exports.tokenize = (str) ->
       result.push(['text', str.slice(index, match.index)])
     index = regex.lastIndex
     if match[1] # variable
-      # debug "matched var"
       result.push(['vararg', match[1]])
     else if match[2]
-      # debug "matched if"
       result.push([match[2], match[3].trim()])
     else if match[4]
-      # debug "matched /if"
       result.push(["end"+match[4], null])
-    # debug "match", match
-    # debug "Rest of the string", str.slice(index, str.length)
   if index < str.length
     result.push(['text', str.slice(index, str.length)])
   regex.lastIndex = 0

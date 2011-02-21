@@ -28,7 +28,15 @@ nct.load = (name, callback) ->
   if templates[name]
     callback(null, templates[name])
   else
-    throw "Template not found: #{name}"
+    if nct.onLoad
+      nct.onLoad name, (err, src) ->
+        nct.loadTemplate src, name
+        if templates[name]
+          callback(null, templates[name])
+        else
+          throw "After onLoad, not found #{name}"
+    else
+      throw "Template not found: #{name}"
 
 nct.loadTemplate = (tmplStr, name) ->
   nct.register(name, nct.compile(tmplStr))
@@ -36,6 +44,7 @@ nct.loadTemplate = (tmplStr, name) ->
 do ->
   # Compile and register a template in this function namespace
   nct.register = (name, tmpl) ->
+    debug "Register #{name}", tmpl
     fn = eval(tmpl)
     re = /\{(.+?)\}/g
     while (match = re.exec(name))
