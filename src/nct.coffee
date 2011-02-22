@@ -67,8 +67,7 @@ do ->
 
   get = (name) ->
     return (context, callback) ->
-      context.get name, (err, result) ->
-        callback(err, result)
+      context.get name, callback
 
   doif = (name, body, elsebody=null) ->
     return (context, callback) ->
@@ -117,14 +116,12 @@ do ->
     return (context, callback) ->
       nct.load name, context, (err, base) ->
         command context, (err, result) ->
-          base context, (err, result) ->
-            callback(null, result)
+          base context, callback
 
   include = (name) ->
     return (context, callback) ->
       nct.load name, context, (err, included) ->
-        included context, (err, result) ->
-          callback(null, result)
+        included context, callback
 
   stamp = (name, command) ->
     return (context, callback) ->
