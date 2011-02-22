@@ -3,15 +3,15 @@ path = require 'path'
 {debug,info} = require('triage') #('debug')
 nct = require "../lib/nct"
 
-module.exports =
+tests =
   "New Context": (test) ->
-    ctx = new nct.Context({"title": "hello"})
+    ctx = new nct.Context({"title": "hello"}, {})
     ctx.get 'title', (err, result) ->
       test.same "hello", result
       test.done()
 
   "Context push": (test) ->
-    ctx = new nct.Context({"title": "hello"})
+    ctx = new nct.Context({"title": "hello"}, {})
     ctx = ctx.push({"post": "Hi"})
     ctx.get 'title', (err, result) ->
       test.same "hello", result
@@ -22,10 +22,16 @@ module.exports =
   "Async function in context": (test) ->
     fn = (cb) ->
       process.nextTick () -> cb(null, "Hi Async!")
-    ctx = new nct.Context({"title": fn})
+    ctx = new nct.Context({"title": fn}, {})
     ctx.get 'title', (err, result) ->
       test.same "Hi Async!", result
       test.done()
+
+  # "Dotted accessors": (test) ->
+  #   ctx = new nct.Context({"post": {title: "Hello World"}}, {})
+  #   ctx.get "post.title", (err, result) ->
+  #     test.same "Hello World", result
+  #     test.done()
 
 renderTests =
   "Write": ["write('hello')", {}, "hello"]
@@ -43,20 +49,20 @@ renderTests =
 
 for name,attrs of renderTests
   do (name, attrs) ->
-    module.exports["render: #{name}"] = (test) ->
+    tests["render: #{name}"] = (test) ->
       nct.register "t", attrs[0]
       nct.render "t", attrs[1], (err, result) ->
         test.same attrs[2], result
         test.done()
 
-module.exports["render: extends"] = (test) ->
+tests["render: extends"] = (test) ->
   nct.register "edge", "extend('base', block('main', multi([get('title')])))"
   nct.register "base", "multi([write('base + '),block('main', multi([write('base')]))])"
   nct.render "edge", {title: "Hello"}, (err, result) ->
     test.same "base + Hello", result
     test.done()
 
-module.exports["render: extends 3 levels"] = (test) ->
+tests["render: extends 3 levels"] = (test) ->
   nct.register "edge", "extend('t', multi([write('Blah')]))"
   nct.register "t", "extend('base', block('main', multi([get('title')])))"
   nct.register "base", "multi([write('base + '),block('main', write('base'))])"
@@ -75,7 +81,7 @@ tokenizeTests = [
 ]
 
 tokenizeTests.forEach ([str, tokens]) ->
-  module.exports["tokenize: #{str.replace(/\n/g,' | ')}"] = (test) ->
+  tests["tokenize: #{str.replace(/\n/g,' | ')}"] = (test) ->
     test.same(tokens, nct.tokenize(str))
     test.done()
 
@@ -85,7 +91,7 @@ compileTests = [
   [".if title\n{title}\n./if", "doif('title', multi([get('title'),write('\\n')]))"]
 ]
 compileTests.forEach ([tmpl, compiled]) ->
-  module.exports["compile: #{tmpl.replace(/\n/g, ' | ')}"] = (test) ->
+  tests["compile: #{tmpl.replace(/\n/g, ' | ')}"] = (test) ->
     test.same(compiled, nct.compile(tmpl))
     test.done()
 
@@ -100,27 +106,29 @@ compileAndRenderTests = [
 ]
 
 compileAndRenderTests.forEach ([tmpl,ctx,toequal]) ->
-  module.exports["CompAndRender #{tmpl.replace(/\n/g,' | ')}"] = (test) ->
+  tests["CompAndRender #{tmpl.replace(/\n/g,' | ')}"] = (test) ->
     nct.loadTemplate tmpl, "t"
     nct.render "t", ctx, (err, result) ->
       test.same toequal, result
       test.done()
 
-module.exports["CompAndRender extends"] = (test) ->
+tests["CompAndRender extends"] = (test) ->
   nct.loadTemplate ".extends base\nHello\n.block main\nt\n./block", "t"
   nct.loadTemplate "Base\n.block main\nBase\n./block", "base"
   nct.render "t", {}, (err, result) ->
+    test.same ["base"], nct.deps("t")
     test.same "Base\nt\n", result
     test.done()
 
-module.exports["CompAndRender include"] = (test) ->
+tests["CompAndRender include"] = (test) ->
   nct.loadTemplate ".> sub", "t"
   nct.loadTemplate "{title}", "sub"
   nct.render "t", {title: "Hello"}, (err, result) ->
+    test.same ["sub"], nct.deps("t")
     test.same "Hello", result
     test.done()
 
-module.exports["Stamp 1"] = (test) ->
+tests["Stamp 1"] = (test) ->
   nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{stamp}"
   i = 0
   results = [["one\n", "1"],["two\n", "2"]]
@@ -128,7 +136,7 @@ module.exports["Stamp 1"] = (test) ->
     test.same results[i], result
     test.done() if ++i==2
 
-module.exports["Stamp 2"] = (test) ->
+tests["Stamp 2"] = (test) ->
   nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{year}/{slug}.html"
   i = 0
   results = [["one\n", "2010/first.html"],["two\n", "2011/second.html"]]
@@ -137,6 +145,14 @@ module.exports["Stamp 2"] = (test) ->
   nct.render "{year}/{slug}.html", ctx, (err, result) ->
     test.same results[i], result
     test.done() if ++i==2
+
+# tests["Asynchronous context function"] = (test) ->
+#   context =
+#     content: (name, callback) ->
+#       filename = path.join(__dirname, "fixtures/#{name}.json")
+#       fs.readFile filename, (err, f) ->
+#         callback(null, JSON.parse(f.toString()))
+#   nct.loadTemplate ".# content:mypost "
 
 contexts =
   'simple': {}
@@ -147,17 +163,24 @@ contexts =
     title: "Hello World"
     engine: "nct"
 
+deps =
+  'example': []
+  'page': ['_base','_footer']
+
 nct.onLoad = (name, callback) ->
   debug "onLoad called: #{name}"
   fs.readFile path.join(__dirname, "fixtures/#{name}.nct"), (err, f) ->
     callback(null, f.toString())
 
-["simple", "example", "page"].forEach (testname) ->
-  module.exports["Integration #{testname}"] = (test) ->
+["example", "page"].forEach (testname) ->
+  tests["Integration #{testname}"] = (test) ->
     fs.readFile path.join(__dirname, "fixtures/#{testname}.nct"), (err, f) ->
       nct.loadTemplate f.toString(), testname
       fs.readFile path.join(__dirname, "fixtures/#{testname}.json"), (err, f) ->
         nct.render testname, contexts[testname], (err, result) ->
           fs.readFile path.join(__dirname, "fixtures/#{testname}.txt"), (err, f) ->
             test.same(f.toString(), result)
+            test.same deps[testname], nct.deps(testname)
             test.done()
+
+module.exports = tests

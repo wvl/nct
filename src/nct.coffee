@@ -16,22 +16,28 @@ nct.renderTemplate = (source, context, name=null, callback) ->
 
 # Render template that has already been registered
 nct.render = (name, context, callback) ->
-  nct.load name, (err, tmpl) ->
+  nct.load name, null, (err, tmpl) ->
+    tmpl.deps = []
     tmpl new Context(context, tmpl), (err, result) ->
       if tmpl.slots
         callback(err, [result, tmpl.stamped_name()])
       else
         callback(err, result)
 
+nct.deps = (name) ->
+  if templates[name] then templates[name].deps else []
+
 # Load a template: from registry, or fallback to onLoad
-nct.load = (name, callback) ->
+nct.load = (name, context, callback) ->
   if templates[name]
+    context.deps.push(name) if context
     callback(null, templates[name])
   else
     if nct.onLoad
       nct.onLoad name, (err, src) ->
         nct.loadTemplate src, name
         if templates[name]
+          context.deps.push(name) if context
           callback(null, templates[name])
         else
           throw "After onLoad, not found #{name}"
@@ -109,14 +115,14 @@ do ->
 
   extend = (name, command) ->
     return (context, callback) ->
-      nct.load name, (err, base) ->
+      nct.load name, context, (err, base) ->
         command context, (err, result) ->
           base context, (err, result) ->
             callback(null, result)
 
   include = (name) ->
     return (context, callback) ->
-      nct.load name, (err, included) ->
+      nct.load name, context, (err, included) ->
         included context, (err, result) ->
           callback(null, result)
 
@@ -140,11 +146,8 @@ class Context
   constructor: (ctx, @base, @tail) ->
     @head = ctx
     @blocks = if @tail then @tail.blocks else {}
-    @slots = @base.slots if @base
-
-  wrap: (context) ->
-    return context if context instanceof Context
-    return new Context(new Stack(context))
+    @slots = @base.slots
+    @deps = @base.deps
 
   get: (key, callback) ->
     ctx = this
