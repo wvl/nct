@@ -105,14 +105,15 @@ tests["Asynchronous context function"] = (test) ->
   # fs.writeFileSync jsonfile, JSON.stringify({"title": "Hello World"})
   context =
     content: (callback, context, params) ->
-      debug "Content", context
       filename = path.join(__dirname, "fixtures/#{params[0]}.json")
       fs.readFile filename, (err, f) ->
-        debug "json is", f.toString()
+        context.deps.push(filename)
         callback(null, JSON.parse(f.toString()))
+
   nct.loadTemplate ".# content post\n{title}\n./#", "t"
   nct.render "t", context, (err, result) ->
     test.same "Hello World\n", result
+    test.same [jsonfile], nct.deps("t")
     test.done()
 
 contexts =
