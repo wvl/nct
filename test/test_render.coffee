@@ -86,19 +86,24 @@ tests["Stamp 1"] = (test) ->
   nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{stamp}"
   i = 0
   results = [["one\n", "1"],["two\n", "2"]]
-  nct.render "{stamp}", {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}]}, (err, result) ->
-    test.same results[i], result
-    test.done() if ++i==2
+  ctx = {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}]}
+  nct.render "{stamp}", ctx, (err, result, stamped_name, finished) ->
+    test.same results[i][0], result
+    test.same results[i][1], stamped_name
+    test.done() if finished
+    i++
 
 tests["Stamp 2"] = (test) ->
-  nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{year}/{slug}.html"
+  nct.loadTemplate "Hi\n .stamp posts\n{title}\n./stamp", "{year}/{slug}.html"
   i = 0
-  results = [["one\n", "2010/first.html"],["two\n", "2011/second.html"]]
+  results = [["Hi one\n", "2010/first.html"],["Hi two\n", "2011/second.html"]]
   ctx =
     posts: [{title: "one", year: "2010", slug: "first"}, {title: "two", year: "2011", slug: "second"}]
-  nct.render "{year}/{slug}.html", ctx, (err, result) ->
-    test.same results[i], result
-    test.done() if ++i==2
+  nct.render "{year}/{slug}.html", ctx, (err, result, stamped_name, finished) ->
+    test.same results[i][0], result
+    test.same results[i][1], stamped_name
+    test.done() if finished
+    i++
 
 tests["Asynchronous context function"] = (test) ->
   jsonfile = path.join(__dirname, "fixtures/post.json")

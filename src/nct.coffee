@@ -18,9 +18,9 @@ nct.renderTemplate = (source, context, name=null, callback) ->
 nct.render = (name, context, callback) ->
   nct.load name, null, (err, tmpl) ->
     tmpl.deps = []
-    tmpl new Context(context, tmpl), (err, result) ->
-      if tmpl.slots
-        callback(err, [result, tmpl.stamped_name()])
+    tmpl new Context(context, tmpl), (err, result, data) ->
+      if data
+        callback(err, result, tmpl.stamped_name(data.slots), data.finished)
       else
         callback(err, result)
 
@@ -57,7 +57,7 @@ do ->
       fn.slots = {} unless fn.slots
       fn.slots[match[1]] = null
     if fn.slots
-      fn.stamped_name = () -> name.replace re, (matched, n) -> fn.slots[n]
+      fn.stamped_name = (slots) -> name.replace re, (matched, n) -> slots[n]
     templates[name] = fn
 
 
@@ -85,9 +85,11 @@ do ->
       pending = commands.length
       return callback(null, "") if pending == 0
       results = []
+      data = {}
       commands.forEach (command, i) ->
-        command context, (err, result) ->
+        command context, (err, result, datum) ->
           results[i] = result
+          _.extend(data, datum) if datum
           if --pending == 0
             callback(null, results.join(""))
 
@@ -104,22 +106,21 @@ do ->
               if --pending == 0
                 callback(null, output)
         else
-          command context.push(loopvar), (err, result) ->
-            callback(null, result)
+          command context.push(loopvar), callback
 
   block = (name, command) ->
     return (context, callback) ->
       if context.blocks[name]
-        return callback(null, context.blocks[name])
+        return callback(null, context.blocks[name][0], context.blocks[name][1])
       else
-        command context, (err, result) ->
-          context.blocks[name] = result
-          callback(null, result)
+        command context, (err, result, data) ->
+          context.blocks[name] = [result, data]
+          callback(null, result, data)
 
   extend = (name, command) ->
     return (context, callback) ->
       nct.load name, context, (err, base) ->
-        command context, (err, result) ->
+        command context, (err, result, data) ->
           base context, callback
 
   include = (name) ->
@@ -132,14 +133,18 @@ do ->
       throw "No slots defined" unless context.slots
       context.get name, (err, result) ->
         throw "Stamp called with non array #{result}" unless _.isArray(result)
+        pending = _.size result
         _.each result, (obj) ->
           ctx = context.push(obj)
-          pending = _.size(ctx.slots)
-          _.each ctx.slots, (value,key) ->
+          numslots = _.size(ctx.slots)
+          slots = _.clone(ctx.slots)
+          _.each slots, (value,key) ->
             ctx.get key, (err, result) ->
-              ctx.slots[key] = result
-              if --pending == 0
-                command ctx, callback
+              slots[key] = result
+              if --numslots == 0
+                finished = --pending == 0
+                command ctx, (err, result) ->
+                  callback(err, result, {slots: slots, finished: finished})
 
 
 
