@@ -1,6 +1,12 @@
 {debug,info} = require 'triage'
 
-exports.tokenize = (str) ->
+tokenize = (str) ->
+
+  parse_args = (input) ->
+    segments = input.trim().split(/\s+/)
+    segments[0] = segments[0].split('.') #if /\./.test(segments[0])
+    segments
+
   # /\{\{(.*?)\}\}|\{(\#|if|else|extends|block)(.*?)\}\s*|\{\/(if|extends|block)(.*?)\}\s*/gi
   regex = ///
       \{(.*?)\}
@@ -11,40 +17,51 @@ exports.tokenize = (str) ->
   lastIndex = null
   result = []
   while (match = regex.exec(str)) != null
-    if match.index > index
+    if match.index > index # pre match
       result.push(['text', str.slice(index, match.index)])
+
     index = regex.lastIndex
     if match[1] # variable
-      result.push(['vararg', match[1]])
+      [key, params...] = parse_args(match[1])
+      result.push(['vararg', key, params])
     else if match[2]
-      result.push([match[2], match[3].trim()])
+      if match[2] == 'text'
+        result.push(['text', match[3]])
+      else if match[2] == '>' or match[2] == 'extends' or match[2] == 'block'
+        result.push([match[2], match[3].trim(), null])
+      else
+        [key, params...] = parse_args(match[3])
+        result.push([match[2], key, params])
     else if match[4]
       result.push(["end"+match[4], null])
-  if index < str.length
+
+  if index < str.length # post match
     result.push(['text', str.slice(index, str.length)])
   regex.lastIndex = 0
   result
-
-exports.compile = (src) ->
-  tokens = exports.tokenize(src)
-  compiled = process_nodes(tokens)
-  compiled
 
 process_nodes = (tokens, processUntilFn) ->
   output = []
   while token = tokens.shift()
     break if processUntilFn && processUntilFn(token[0])
-    output.push(builders[token[0]](token[1], tokens))
+    output.push(builders[token[0]](token[1], token[2], tokens))
   if output.length > 1 then "multi([#{output.join(',')}])" else output[0]
 
+
 builders =
-  'vararg': (token) ->
-    "get('#{token}')"
+  'vararg': (key, params) ->
+    paramargs = params.map (p) -> "'#{p}'"
+    paramargs = "[#{paramargs.join(',')}]"
+    if key.length > 1
+      toks = key.map (t) -> "'#{t}'"
+      "mget([#{toks.join(',')}], #{paramargs})"
+    else
+      "get('#{key.join(',')}', #{paramargs})"
 
   'text': (str) ->
     "write('#{escapeJs(str)}')"
 
-  'if': (key, tokens) ->
+  'if': (key,params,tokens) ->
     waselse = false
     body = process_nodes tokens, (tag) ->
       if tag=='else' || tag=='endif'
@@ -56,24 +73,26 @@ builders =
       process_nodes tokens, (tag) -> return true if tag=='endif'
     else
       null
-    "doif('#{key}', #{body}" + if elsebody then ", #{elsebody})" else ")"
+    query = builders['vararg'](key, params)
+    "doif(#{query}, #{body}" + if elsebody then ", #{elsebody})" else ")"
 
-  '#': (key, tokens) ->
+  '#': (key,params,tokens) ->
+    query = builders['vararg'](key, params)
     body = process_nodes tokens, (tag) -> tag=='end#'
-    "each('#{key}', #{body})"
+    "each(#{query}, #{body})"
 
-  '>': (key, tokens) ->
+  '>': (key,ignore,tokens) ->
     "include('#{key}')"
 
-  'stamp': (key, tokens) ->
+  'stamp': (key, params, tokens) ->
     body = process_nodes tokens, (tag) -> tag=='endstamp'
     "stamp('#{key}', #{body})"
 
-  'extends': (key, tokens) ->
+  'extends': (key, ignore, tokens) ->
     body = process_nodes tokens
     "extend('#{key}', #{body})"
 
-  'block': (key, tokens) ->
+  'block': (key, ignore, tokens) ->
     body = process_nodes tokens, (tag) -> tag=='endblock'
     "block('#{key}', #{body})"
 
@@ -100,4 +119,7 @@ escapeJs = (s) ->
       .replace(LF, '\\f')
       .replace(TB, "\\t")
   return s
+
+exports.compile = (src) ->
+  process_nodes(tokenize(src))
 

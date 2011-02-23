@@ -65,13 +65,17 @@ do ->
     return (context, callback) ->
       callback(null, data)
 
-  get = (name) ->
+  mget = (names, params) ->
     return (context, callback) ->
-      context.get name, callback
+      context.mget names, params, callback
 
-  doif = (name, body, elsebody=null) ->
+  get = (name, params) ->
     return (context, callback) ->
-      context.get name, (err, result) ->
+      context.get name, params, callback
+
+  doif = (query, body, elsebody=null) ->
+    return (context, callback) ->
+      query context, (err, result) ->
         return body(context, callback) if result
         return elsebody(context, callback) if elsebody
         callback null, ""
@@ -87,9 +91,9 @@ do ->
           if --pending == 0
             callback(null, results.join(""))
 
-  each = (name, command) ->
+  each = (query, command) ->
     return (context, callback) ->
-      context.get name, (err, loopvar) ->
+      query context, (err, loopvar) ->
         if _.isArray(loopvar)
           pending = loopvar.length
           output = ""
@@ -146,18 +150,31 @@ class Context
     @slots = @base.slots
     @deps = @base.deps
 
-  get: (key, callback) ->
+  get: (key, params, callback) ->
+    if callback == undefined
+      callback = params
+      params = null
     ctx = this
     while ctx
       if !_.isArray(ctx.head) && typeof ctx.head == "object"
         value = ctx.head[key]
         if value != undefined
           if typeof value == "function"
-            return value(callback)
+            return value(callback, this, params)
           else
             return callback(null, value)
       ctx = ctx.tail
     return callback(null, null)
+
+  # Takes an array of keys to traverse down. Does not do any
+  # backtracking -- the first key will determine which object
+  # we traverse down.
+  mget: (keys, params, callback) ->
+    callback = params if callback == undefined
+    this.get keys[0], (err, result) ->
+      for k in keys.slice(1)
+        result = result[k] if result != undefined
+      return callback(null, result)
 
   push: (newctx) ->
     return new Context(newctx, @base, this)

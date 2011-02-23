@@ -6,16 +6,16 @@ nct = require "../lib/nct"
 tests =
   "New Context": (test) ->
     ctx = new nct.Context({"title": "hello"}, {})
-    ctx.get 'title', (err, result) ->
+    ctx.get 'title', [], (err, result) ->
       test.same "hello", result
       test.done()
 
   "Context push": (test) ->
     ctx = new nct.Context({"title": "hello"}, {})
     ctx = ctx.push({"post": "Hi"})
-    ctx.get 'title', (err, result) ->
+    ctx.get 'title', [], (err, result) ->
       test.same "hello", result
-      ctx.get 'post', (err, result) ->
+      ctx.get 'post', [], (err, result) ->
         test.same 'Hi', result
         test.done()
 
@@ -23,86 +23,40 @@ tests =
     fn = (cb) ->
       process.nextTick () -> cb(null, "Hi Async!")
     ctx = new nct.Context({"title": fn}, {})
-    ctx.get 'title', (err, result) ->
+    ctx.get 'title', [], (err, result) ->
       test.same "Hi Async!", result
       test.done()
 
-  # "Dotted accessors": (test) ->
-  #   ctx = new nct.Context({"post": {title: "Hello World"}}, {})
-  #   ctx.get "post.title", (err, result) ->
-  #     test.same "Hello World", result
-  #     test.done()
 
-renderTests =
-  "Write": ["write('hello')", {}, "hello"]
-  "Get": ["get('title')", {'title': 'Hello World'}, "Hello World"]
-  "If": ["doif('newuser', write('welcome'))", {'newuser': true}, "welcome"]
-  "If false": ["doif('newuser', write('welcome'))", {'newuser': false}, ""]
-  "If/Else": ["doif('newuser', write('welcome'), get('name'))",
-    {'newuser': false, 'name': 'joe'}, "joe"]
-  "Multi": ["multi([write('hello '), get('name')])", {name: 'World'}, "hello World"]
-  "Multi 1": ["multi([write('hello ')])", {name: 'World'}, "hello "]
-  "If Multi": ['''doif('newuser', multi([get('greeting'),write('new user\\n')]))''',
-    {'newuser': true, 'greeting': 'Hello '}, "Hello new user\n"]
-  "Each": ["each('post', get('title'))", {'post': [{title: 'Hello'}, {title: 'World'}]}, "HelloWorld"]
-  "Each object": ["each('person', get('name'))", {'person': {name: 'Joe'}}, "Joe"]
-
-for name,attrs of renderTests
-  do (name, attrs) ->
-    tests["render: #{name}"] = (test) ->
-      nct.register "t", attrs[0]
-      nct.render "t", attrs[1], (err, result) ->
-        test.same attrs[2], result
-        test.done()
-
-tests["render: extends"] = (test) ->
-  nct.register "edge", "extend('base', block('main', multi([get('title')])))"
-  nct.register "base", "multi([write('base + '),block('main', multi([write('base')]))])"
-  nct.render "edge", {title: "Hello"}, (err, result) ->
-    test.same "base + Hello", result
-    test.done()
-
-tests["render: extends 3 levels"] = (test) ->
-  nct.register "edge", "extend('t', multi([write('Blah')]))"
-  nct.register "t", "extend('base', block('main', multi([get('title')])))"
-  nct.register "base", "multi([write('base + '),block('main', write('base'))])"
-  nct.render "edge", {title: "Hello"}, (err, result) ->
-    test.same "base + Hello", result
-    test.done()
-
-tokenizeTests = [
-  ["hello", [['text', 'hello']]],
-  ["{title}", [['vararg', 'title']]]
-  [".if title", [['if', 'title']]]
-  [".if title\n./if", [['if', 'title'], ['endif', null]]]
-  ["  .if title\n  ./if title\n", [['if', 'title'], ['endif', null]]]
-  [".if title\n{title}\n./if title\n", [['if', 'title'], ['vararg','title'], ['text','\n'], ['endif', null]]]
-  [".extends base\n.block main\n./block", [['extends', 'base'], ['block', 'main'], ['endblock',null]]]
+contextAccessors = [
+  [["title"], {title: "Hello"}, "Hello"]
+  [["post","title"], {post: {title: "Hello"}}, "Hello"]
+  [["post","blah"], {post: ["Hello"]}, undefined]
+  [["post","blah", "blah"], {post: ["Hello"]}, undefined]
 ]
 
-tokenizeTests.forEach ([str, tokens]) ->
-  tests["tokenize: #{str.replace(/\n/g,' | ')}"] = (test) ->
-    test.same(tokens, nct.tokenize(str))
-    test.done()
+contextAccessors.forEach ([attrs, context, expected]) ->
+  tests["Context accessors #{attrs}"] = (test) ->
+    ctx = new nct.Context(context, {})
+    ctx.mget attrs, [], (err, result) ->
+      test.same expected, result
+      test.done()
 
-compileTests = [
-  ["{title}", "get('title')"]
-  ["hello {title}", "multi([write('hello '),get('title')])"]
-  [".if title\n{title}\n./if", "doif('title', multi([get('title'),write('\\n')]))"]
-]
-compileTests.forEach ([tmpl, compiled]) ->
-  tests["compile: #{tmpl.replace(/\n/g, ' | ')}"] = (test) ->
-    test.same(compiled, nct.compile(tmpl))
-    test.done()
 
+cbGetFn = (cb, ctx, params) -> ctx.get(params[0], cb)
 
 compileAndRenderTests = [
   ["Hello", {}, "Hello"]
   ["Hello {title}", {title: "World!"}, "Hello World!"]
+  ["Hello {person.name}", {person: {name: "Joe"}}, "Hello Joe"]
+  ["Hello {content name}", {content: cbGetFn, name: 'Joe'}, "Hello Joe"]
+  [".if content post\n{post.title}\n./if", {content: cbGetFn, post: {title: 'Hello'}}, "Hello\n"]
+  [".# content post\n{title}\n./#", {content: cbGetFn, post: {title: 'Hello'}}, "Hello\n"]
   [".if doit\n{name}\n./if", {doit: true, name: "Joe"}, "Joe\n"]
+  [".if nope\n{name}\n./if", {nope: false, name: "Joe"}, ""]
   [".if doit\n{name}\n.else\nNoope\n./if", {doit: false, name: "Joe"}, "Noope\n"]
   [".# posts\n{title}\n./#", {posts: [{'title': 'Hello'},{'title':'World'}]}, "Hello\nWorld\n"]
-  [".# posts\n{title}\n./#", {posts: [{'title': 'Hello'},{'title':'World'}]}, "Hello\nWorld\n"]
+  [".# person\n{name}\n./#", {person: {'name': 'Joe'}}, "Joe\n"]
 ]
 
 compileAndRenderTests.forEach ([tmpl,ctx,toequal]) ->
@@ -146,13 +100,20 @@ tests["Stamp 2"] = (test) ->
     test.same results[i], result
     test.done() if ++i==2
 
-# tests["Asynchronous context function"] = (test) ->
-#   context =
-#     content: (name, callback) ->
-#       filename = path.join(__dirname, "fixtures/#{name}.json")
-#       fs.readFile filename, (err, f) ->
-#         callback(null, JSON.parse(f.toString()))
-#   nct.loadTemplate ".# content:mypost "
+tests["Asynchronous context function"] = (test) ->
+  jsonfile = path.join(__dirname, "fixtures/post.json")
+  # fs.writeFileSync jsonfile, JSON.stringify({"title": "Hello World"})
+  context =
+    content: (callback, context, params) ->
+      debug "Content", context
+      filename = path.join(__dirname, "fixtures/#{params[0]}.json")
+      fs.readFile filename, (err, f) ->
+        debug "json is", f.toString()
+        callback(null, JSON.parse(f.toString()))
+  nct.loadTemplate ".# content post\n{title}\n./#", "t"
+  nct.render "t", context, (err, result) ->
+    test.same "Hello World\n", result
+    test.done()
 
 contexts =
   'simple': {}
