@@ -19,9 +19,11 @@ nct.render = (name, context, callback) ->
   nct.load name, null, (err, tmpl) ->
     tmpl.deps = []
     tmpl new Context(context, tmpl), (err, result, data) ->
-      if data
+      if data && data.slots
+        debug "data", data
         callback(err, result, tmpl.stamped_name(data.slots), data.finished)
       else
+        debug "no data?"
         callback(err, result)
 
 nct.deps = (name) ->
@@ -46,6 +48,7 @@ nct.load = (name, context, callback) ->
 
 nct.loadTemplate = (tmplStr, name) ->
   nct.register(name, nct.compile(tmplStr))
+
 
 do ->
   # Compile and register a template in this function namespace
@@ -80,18 +83,54 @@ do ->
         return elsebody(context, callback) if elsebody
         callback null, ""
 
-  multi = (commands) ->
-    return (context, callback) ->
-      pending = commands.length
-      return callback(null, "") if pending == 0
+  multi = (commands, withstamp) ->
+    if withstamp
+      stamp_index = withstamp-1
+      stamps = []
       results = []
-      data = {}
-      commands.forEach (command, i) ->
-        command context, (err, result, datum) ->
-          results[i] = result
-          _.extend(data, datum) if datum
-          if --pending == 0
-            callback(null, results.join(""))
+
+      return (context, callback) ->
+        pending = commands.length
+        stamp_length = null
+
+        commands.forEach (command, i) ->
+          command context, (err, result, datum) ->
+            results[i] = result
+
+            if i==stamp_index
+              stamp_length = datum.length unless stamp_length
+              if pending == 1
+                datum.finished = --stamp_length == 0
+                debug "Multi Return", datum
+                callback(null, results.join(""), datum)
+                while (stampresult = stamps.pop())
+                  results[stamp_index] = stampresult[0]
+                  datum = stampresult[1]
+                  datum.finished = --stamp_length == 0
+                  debug "Multi Return Loop", datum
+                  callback(null, results.join(""), datum)
+              else
+                stamps.push([result, datum])
+            else if --pending==1 && stamps.length
+              while (stampresult = stamps.pop())
+                results[stamp_index] = stampresult[0]
+                datum = stampresult[1]
+                datum.finished = --stamp_length == 0
+                debug "Multi return from non stamp", datum
+                callback(null, results.join(""), datum)
+    else
+      return (context, callback) ->
+        pending = commands.length
+
+        results = []
+        data = null
+        commands.forEach (command, i) ->
+          command context, (err, result, datum) ->
+            results[i] = result
+            data = datum if datum
+            callback(null, results.join(""), data) if --pending == 0
+
+
 
   each = (query, command) ->
     return (context, callback) ->
@@ -114,28 +153,33 @@ do ->
         return callback(null, context.blocks[name][0], context.blocks[name][1])
       else
         command context, (err, result, data) ->
-          context.blocks[name] = [result, data]
-          callback(null, result, data)
+          context.get '__stamp', (err, instamp) ->
+            context.blocks[name] = [result, data] #unless instamp
+            callback(null, result, data)
 
   extend = (name, command) ->
     return (context, callback) ->
+      debug "Extend #{name}"
       nct.load name, context, (err, base) ->
         command context, (err, result, data) ->
-          base context, callback
+          base context, (err, result) ->
+            callback(err, result, data)
+
 
   include = (name) ->
     return (context, callback) ->
       nct.load name, context, (err, included) ->
         included context, callback
 
-  stamp = (name, command) ->
+  stamp = (query, command) ->
     return (context, callback) ->
       throw "No slots defined" unless context.slots
-      context.get name, (err, result) ->
+      query context, (err, result) ->
         throw "Stamp called with non array #{result}" unless _.isArray(result)
-        pending = _.size result
+        length = pending = result.length
         _.each result, (obj) ->
-          ctx = context.push(obj)
+          debug "In Stamp", obj
+          ctx = context.push({'__stamp': true}).push(obj)
           numslots = _.size(ctx.slots)
           slots = _.clone(ctx.slots)
           _.each slots, (value,key) ->
@@ -144,7 +188,8 @@ do ->
               if --numslots == 0
                 finished = --pending == 0
                 command ctx, (err, result) ->
-                  callback(err, result, {slots: slots, finished: finished})
+                  debug "stamped #{finished}", result, slots
+                  callback(err, result, {slots: slots, length: length, finished: finished})
 
 
 

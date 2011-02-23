@@ -42,10 +42,12 @@ tokenize = (str) ->
 
 process_nodes = (tokens, processUntilFn) ->
   output = []
+  stamp = false
   while token = tokens.shift()
     break if processUntilFn && processUntilFn(token[0])
     output.push(builders[token[0]](token[1], token[2], tokens))
-  if output.length > 1 then "multi([#{output.join(',')}])" else output[0]
+    stamp = output.length if token[0] == 'stamp'
+  if output.length > 1 then "multi([#{output.join(',')}], #{stamp})" else output[0]
 
 
 builders =
@@ -86,7 +88,8 @@ builders =
 
   'stamp': (key, params, tokens) ->
     body = process_nodes tokens, (tag) -> tag=='endstamp'
-    "stamp('#{key}', #{body})"
+    query = builders['vararg'](key, params)
+    "stamp(#{query}, #{body})"
 
   'extends': (key, ignore, tokens) ->
     body = process_nodes tokens

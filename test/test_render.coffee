@@ -90,20 +90,42 @@ tests["Stamp 1"] = (test) ->
   nct.render "{stamp}", ctx, (err, result, stamped_name, finished) ->
     test.same results[i][0], result
     test.same results[i][1], stamped_name
-    test.done() if finished
     i++
+    if finished
+      test.same 2, i
+      test.done()
 
 tests["Stamp 2"] = (test) ->
-  nct.loadTemplate "Hi\n .stamp posts\n{title}\n./stamp", "{year}/{slug}.html"
+  nct.loadTemplate ".if doit\nHi\n .stamp view posts\n{title}\n./stamp\n./if", "{year}/{slug}.html"
   i = 0
-  results = [["Hi one\n", "2010/first.html"],["Hi two\n", "2011/second.html"]]
+  results = {"2010/first.html":  "Hi\none\n", "2011/second.html": "Hi\ntwo\n"}
   ctx =
+    view: cbGetFn
     posts: [{title: "one", year: "2010", slug: "first"}, {title: "two", year: "2011", slug: "second"}]
+    doit: true
+
   nct.render "{year}/{slug}.html", ctx, (err, result, stamped_name, finished) ->
-    test.same results[i][0], result
-    test.same results[i][1], stamped_name
-    test.done() if finished
+    debug "test Stamped: #{finished}", result
+    test.same results[stamped_name], result
     i++
+    if finished
+      test.same 2, i
+      test.done()
+
+delay = (cb, ctx, params) ->
+  setTimeout (() -> cb(null, "")), params[0] || 10
+
+tests["Stamp delays"] = (test) ->
+  nct.loadTemplate ".stamp posts\n{title}\n./stamp\n{delay}", "{stamp}"
+  i = 0
+  results = {"1": "one\n","2": "two\n"}
+  ctx = {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}], delay: delay}
+  nct.render "{stamp}", ctx, (err, result, stamped_name, finished) ->
+    test.same results[stamped_name], result
+    i++
+    if finished
+      test.same 2, i
+      test.done()
 
 tests["Asynchronous context function"] = (test) ->
   jsonfile = path.join(__dirname, "fixtures/post.json")
@@ -143,11 +165,26 @@ nct.onLoad = (name, callback) ->
   tests["Integration #{testname}"] = (test) ->
     fs.readFile path.join(__dirname, "fixtures/#{testname}.nct"), (err, f) ->
       nct.loadTemplate f.toString(), testname
-      fs.readFile path.join(__dirname, "fixtures/#{testname}.json"), (err, f) ->
-        nct.render testname, contexts[testname], (err, result) ->
-          fs.readFile path.join(__dirname, "fixtures/#{testname}.txt"), (err, f) ->
-            test.same(f.toString(), result)
-            test.same deps[testname], nct.deps(testname)
-            test.done()
+      nct.render testname, contexts[testname], (err, result) ->
+        fs.readFile path.join(__dirname, "fixtures/#{testname}.txt"), (err, f) ->
+          test.same(f.toString(), result)
+          test.same deps[testname], nct.deps(testname)
+          test.done()
+
+# tests["Integration stamp"] = (test) ->
+#   context =
+#     posts: [
+#       {title: "First Post", slug: "first"}
+#       {title: "Second Post", slug: "second"}
+#     ]
+#   fs.readFile path.join(__dirname, "fixtures/{slug}.html.nct"), (err, f) ->
+#     nct.loadTemplate f.toString(), "{slug}.html" 
+#     nct.render "{slug}.html", context, (err, result, filename, finished) ->
+#       info "filename: #{filename}"
+#       debug "result: ", result
+#       fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
+#         test.same(f.toString(), result)
+#         # test.same deps[testname], nct.deps(testname)
+#         test.done() if finished
 
 module.exports = tests
