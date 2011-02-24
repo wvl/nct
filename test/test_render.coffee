@@ -171,8 +171,9 @@ deps =
   'page': ['_base','_footer']
 
 nct.onLoad = (name, callback) ->
-  fs.readFile path.join(__dirname, "fixtures/#{name}.nct"), (err, f) ->
-    callback(null, f.toString())
+  filename = path.join(__dirname, "fixtures/#{name}.nct")
+  fs.readFile filename, (err, f) ->
+    callback(null, f.toString(), filename)
 
 ["example", "page"].forEach (testname) ->
   tests["Integration #{testname}"] = (test) ->
@@ -181,7 +182,8 @@ nct.onLoad = (name, callback) ->
       nct.render testname, contexts[testname], (err, result) ->
         fs.readFile path.join(__dirname, "fixtures/#{testname}.txt"), (err, f) ->
           test.same(f.toString(), result)
-          test.same deps[testname], nct.deps(testname)
+          test.same deps[testname].map((f) -> path.join(__dirname, "fixtures/#{f}.nct")), 
+            nct.deps(testname)
           test.done()
 
 tests["Integration stamp"] = (test) ->
@@ -190,12 +192,13 @@ tests["Integration stamp"] = (test) ->
       {title: "First Post", slug: "first"}
       {title: "Second Post", slug: "second"}
     ]
+  deps = ['_base','_footer'].map (f) -> path.join(__dirname, "fixtures/#{f}.nct")
   fs.readFile path.join(__dirname, "fixtures/{slug}.html.nct"), (err, f) ->
     nct.loadTemplate f.toString(), "{slug}.html" 
     nct.render "{slug}.html", context, (err, result, filename, finished) ->
       fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
         test.same(f.toString(), result)
-        # test.same deps[testname], nct.deps(testname)
+        test.same deps, nct.deps('{slug}.html')
         test.done() if finished
 
 module.exports = tests

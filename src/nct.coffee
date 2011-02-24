@@ -8,6 +8,7 @@ nct.compile  = compiler.compile
 
 # Template registry: name -> function
 templates = {}
+template_mapping = {}
 
 # Render template passed in as source template
 nct.renderTemplate = (source, context, name=null, callback) ->
@@ -24,7 +25,7 @@ nct.render = (name, context, callback) ->
       if tmpl.stamped_name
         callback(err, result.rendered, tmpl.stamped_name(result.slots), --pending==0)
       else
-        callback(err, result.rendered)
+        callback(err, result.rendered, name, true)
 
 nct.deps = (name) ->
   if templates[name] then templates[name].deps else []
@@ -32,14 +33,15 @@ nct.deps = (name) ->
 # Load a template: from registry, or fallback to onLoad
 nct.load = (name, context, callback) ->
   if templates[name]
-    context.deps.push(name) if context
+    context.deps.push(template_mapping[name] or name) if context
     callback(null, templates[name])
   else
     if nct.onLoad
-      nct.onLoad name, (err, src) ->
+      nct.onLoad name, (err, src, filename) ->
         nct.loadTemplate src, name
         if templates[name]
-          context.deps.push(name) if context
+          template_mapping[name] = filename if filename
+          context.deps.push(filename or name) if context
           callback(null, templates[name])
         else
           throw "After onLoad, not found #{name}"
