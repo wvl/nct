@@ -51,14 +51,15 @@ process_nodes = (tokens, processUntilFn) ->
 
 
 builders =
-  'vararg': (key, params) ->
+  'vararg': (key, params, output=true) ->
     paramargs = params.map (p) -> "'#{p}'"
     paramargs = "[#{paramargs.join(',')}]"
+    out = if output then "out" else ""
     if key.length > 1
       toks = key.map (t) -> "'#{t}'"
-      "mget([#{toks.join(',')}], #{paramargs})"
+      "mget#{out}([#{toks.join(',')}], #{paramargs})"
     else
-      "get('#{key.join(',')}', #{paramargs})"
+      "get#{out}('#{key.join(',')}', #{paramargs})"
 
   'text': (str) ->
     "write('#{escapeJs(str)}')"
@@ -75,11 +76,11 @@ builders =
       process_nodes tokens, (tag) -> return true if tag=='endif'
     else
       null
-    query = builders['vararg'](key, params)
+    query = builders['vararg'](key, params, false)
     "doif(#{query}, #{body}" + if elsebody then ", #{elsebody})" else ")"
 
   '#': (key,params,tokens) ->
-    query = builders['vararg'](key, params)
+    query = builders['vararg'](key, params, false)
     body = process_nodes tokens, (tag) -> tag=='end#'
     "each(#{query}, #{body})"
 
@@ -88,7 +89,7 @@ builders =
 
   'stamp': (key, params, tokens) ->
     body = process_nodes tokens, (tag) -> tag=='endstamp'
-    query = builders['vararg'](key, params)
+    query = builders['vararg'](key, params, false)
     "stamp(#{query}, #{body})"
 
   'extends': (key, ignore, tokens) ->

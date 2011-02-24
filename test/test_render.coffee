@@ -82,6 +82,13 @@ tests["CompAndRender include"] = (test) ->
     test.same "Hello", result
     test.done()
 
+tests["CompAndRender include recursive"] = (test) ->
+  context = {name: '1', kids: [{name: '1.1', kids: [{name: '1.1.1', kids: []}] }] }
+  nct.loadTemplate "{name}\n.# kids\n.> t\n./#", "t"
+  nct.render "t", context, (err, result) ->
+    test.same "1\n1.1\n1.1.1\n", result
+    test.done()
+
 tests["Stamp 1"] = (test) ->
   nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{stamp}"
   i = 0
@@ -96,7 +103,7 @@ tests["Stamp 1"] = (test) ->
       test.done()
 
 tests["Stamp 2"] = (test) ->
-  nct.loadTemplate ".if doit\nHi\n .stamp view posts\n{title}\n./stamp\n./if", "{year}/{slug}.html"
+  nct.loadTemplate "Hi\n .stamp view posts\n{title}\n./stamp\n", "{year}/{slug}.html"
   i = 0
   results = {"2010/first.html":  "Hi\none\n", "2011/second.html": "Hi\ntwo\n"}
   ctx =
@@ -105,7 +112,6 @@ tests["Stamp 2"] = (test) ->
     doit: true
 
   nct.render "{year}/{slug}.html", ctx, (err, result, stamped_name, finished) ->
-    debug "test Stamped: #{finished}", result
     test.same results[stamped_name], result
     i++
     if finished
@@ -157,7 +163,6 @@ deps =
   'page': ['_base','_footer']
 
 nct.onLoad = (name, callback) ->
-  debug "onLoad called: #{name}"
   fs.readFile path.join(__dirname, "fixtures/#{name}.nct"), (err, f) ->
     callback(null, f.toString())
 
@@ -171,20 +176,18 @@ nct.onLoad = (name, callback) ->
           test.same deps[testname], nct.deps(testname)
           test.done()
 
-# tests["Integration stamp"] = (test) ->
-#   context =
-#     posts: [
-#       {title: "First Post", slug: "first"}
-#       {title: "Second Post", slug: "second"}
-#     ]
-#   fs.readFile path.join(__dirname, "fixtures/{slug}.html.nct"), (err, f) ->
-#     nct.loadTemplate f.toString(), "{slug}.html" 
-#     nct.render "{slug}.html", context, (err, result, filename, finished) ->
-#       info "filename: #{filename}"
-#       debug "result: ", result
-#       fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
-#         test.same(f.toString(), result)
-#         # test.same deps[testname], nct.deps(testname)
-#         test.done() if finished
+tests["Integration stamp"] = (test) ->
+  context =
+    posts: [
+      {title: "First Post", slug: "first"}
+      {title: "Second Post", slug: "second"}
+    ]
+  fs.readFile path.join(__dirname, "fixtures/{slug}.html.nct"), (err, f) ->
+    nct.loadTemplate f.toString(), "{slug}.html" 
+    nct.render "{slug}.html", context, (err, result, filename, finished) ->
+      fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
+        test.same(f.toString(), result)
+        # test.same deps[testname], nct.deps(testname)
+        test.done() if finished
 
 module.exports = tests
