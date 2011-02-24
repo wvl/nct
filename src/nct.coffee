@@ -156,9 +156,12 @@ do ->
   extend = (name, command) ->
     return (context, callback) ->
       nct.load name, context, (err, base) ->
-        base context, (err, base_results) ->
+        base context.push({'__extended': true}), (err, base_results) ->
           command context, (err, child_results) ->
-            callback(err, new Result(base_results.rendered).merge(base_results).merge(child_results).fill())
+            result = new Result(base_results.rendered).merge(base_results).merge(child_results)
+            context.get '__extended', (err, extended) ->
+              result = result.fill() unless extended
+              callback(err, result)
 
 
   include = (name) ->

@@ -74,6 +74,14 @@ tests["CompAndRender extends"] = (test) ->
     test.same "Base\nt\n", result
     test.done()
 
+tests["CompAndRender extends 3 levels"] = (test) ->
+  nct.loadTemplate ".extends med\nHello\n.block main\nMAIN\n./block", "t"
+  nct.loadTemplate ".extends base\n.block sidebar\nSIDEBAR\n./block", "med"
+  nct.loadTemplate "BASE\n.block main\nBASEMAIN\n./block\n.block sidebar\nsidebar base\n./block", "base"
+  nct.render "t", {}, (err, result) ->
+    test.same "BASE\nMAIN\nSIDEBAR\n", result
+    test.done()
+
 tests["CompAndRender include"] = (test) ->
   nct.loadTemplate ".> sub", "t"
   nct.loadTemplate "{title}", "sub"
