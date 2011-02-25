@@ -27,6 +27,12 @@ tests =
       test.same "Hi Async!", result
       test.done()
 
+  "Context with synchronous function": (test) ->
+    ctx = new nct.Context({"title": () -> "Hello World"}, {})
+    ctx.get 'title', [], (err, result) ->
+      test.same "Hello World", result
+      test.done()
+
 
 contextAccessors = [
   [["title"], {title: "Hello"}, "Hello"]

@@ -237,7 +237,10 @@ class Context
         value = ctx.head[key]
         if value != undefined
           if typeof value == "function"
-            return value(callback, this, params)
+            if value.length == 0
+              return callback(null, value.call(ctx.head))
+            else
+              return value.call(ctx.head, callback, this, params)
           else
             return callback(null, value)
       ctx = ctx.tail
