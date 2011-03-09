@@ -18,22 +18,18 @@ nct.renderTemplate = (source, context, name=null, callback) ->
 # Render template that has already been registered
 nct.render = (name, context, callback) ->
   nct.load name, null, (err, tmpl) ->
-    tmpl.deps = []
     pending = null
     tmpl new Context(context, tmpl), (err, result) ->
       pending = result.iterations unless pending
-      if tmpl.stamped_name
-        callback(err, result.rendered, tmpl.stamped_name(result.slots), --pending==0)
-      else
-        callback(err, result.rendered, name, true)
+      callback(err, result.rendered, tmpl.stamped_name(result.slots), --pending==0)
 
 nct.deps = (name) ->
-  if templates[name] then templates[name].deps else []
+  if templates[name] then templates[name].deps else {}
 
 # Load a template: from registry, or fallback to onLoad
 nct.load = (name, context, callback) ->
   if templates[name]
-    context.deps.push(template_mapping[name] or name) if context
+    context.deps[template_mapping[name] or name] = new Date().getTime() if context
     callback(null, templates[name])
   else
     if nct.onLoad
@@ -41,7 +37,8 @@ nct.load = (name, context, callback) ->
         nct.loadTemplate src, name
         if templates[name]
           template_mapping[name] = filename if filename
-          context.deps.push(filename or name) if context
+          context.deps[template_mapping[name] or name] = new Date().getTime() if context
+          # context.deps.push(filename or name) if context
           callback(null, templates[name])
         else
           throw "After onLoad, not found #{name}"
@@ -51,17 +48,26 @@ nct.load = (name, context, callback) ->
 nct.loadTemplate = (tmplStr, name) ->
   nct.register(name, nct.compile(tmplStr))
 
+nct.clear = ->
+  templates = {}
+  template_mapping = {}
+
+
 do ->
   # Compile and register a template in this function namespace
   nct.register = (name, tmpl) ->
-    debug "Register #{name}", tmpl
+    # debug "Register #{name}", tmpl
     fn = eval(tmpl)
+    fn.deps = {}
+    fn.source_name = name
     re = /\{(.+?)\}/g
     while (match = re.exec(name))
       fn.slots = {} unless fn.slots
       fn.slots[match[1]] = null
     if fn.slots
       fn.stamped_name = (slots) -> name.replace re, (matched, n) -> slots[n]
+    else
+      fn.stamped_name = () -> name
     templates[name] = fn
 
 
@@ -80,13 +86,13 @@ do ->
       context.get name, params, (err, result) ->
         callback(err, new Result(result))
 
-  mget = (names, params) ->
+  mget = (names, params, calledfrom) ->
     return (context, callback) ->
-      context.mget names, params, callback
+      context.mget names, params, callback, calledfrom
 
-  get = (name, params) ->
+  get = (name, params, calledfrom) ->
     return (context, callback) ->
-      context.get name, params, callback
+      context.get name, params, callback, calledfrom
 
   doif = (query, body, elsebody=null) ->
     return (context, callback) ->
@@ -161,7 +167,7 @@ do ->
         base context.push({'__extended': true}), (err, base_results) ->
           command context, (err, child_results) ->
             result = new Result(base_results.rendered).merge(base_results).merge(child_results)
-            context.get '__extended', (err, extended) ->
+            context.get '__extended', [], (err, extended) ->
               result = result.fill() unless extended
               callback(err, result)
 
@@ -176,6 +182,7 @@ do ->
       throw "No slots defined" unless context.slots
       query context, (err, iterator) ->
         throw "Stamp called with non array #{iterator}" unless _.isArray(iterator)
+        throw "What to do if stamp query is empty?" unless iterator.length
         _.each iterator, (obj) ->
           ctx = context.push(obj)
           command ctx, (err, result) ->
@@ -205,7 +212,7 @@ class Result
     @slots = _.clone(context.slots)
     numslots = _.size(context.slots)
     _.each @slots, (value,key) =>
-      context.get key, (err, result) =>
+      context.get key, [], (err, result) =>
         @slots[key] = result
         callback(null, this) if --numslots == 0
 
@@ -227,10 +234,7 @@ class Context
     @slots = @base.slots
     @deps = @base.deps
 
-  get: (key, params, callback) ->
-    if callback == undefined
-      callback = params
-      params = null
+  get: (key, params, callback, calledfrom) ->
     ctx = this
     while ctx
       if !_.isArray(ctx.head) && typeof ctx.head == "object"
@@ -240,7 +244,7 @@ class Context
             if value.length == 0
               return callback(null, value.call(ctx.head))
             else
-              return value.call(ctx.head, callback, this, params)
+              return value.call(ctx.head, callback, this, params, calledfrom)
           else
             return callback(null, value)
       ctx = ctx.tail
@@ -250,8 +254,7 @@ class Context
   # backtracking -- the first key will determine which object
   # we traverse down.
   mget: (keys, params, callback) ->
-    callback = params if callback == undefined
-    this.get keys[0], (err, result) ->
+    this.get keys[0], [], (err, result) ->
       for k in keys.slice(1)
         result = result[k] if result != undefined
       return callback(null, result)

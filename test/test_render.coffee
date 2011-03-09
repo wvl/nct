@@ -1,6 +1,6 @@
 fs = require 'fs'
 path = require 'path'
-{debug,info} = require('triage') #('debug')
+{debug,info} = require('triage')('debug')
 nct = require "../lib/nct"
 
 tests =
@@ -49,7 +49,7 @@ contextAccessors.forEach ([attrs, context, expected]) ->
       test.done()
 
 
-cbGetFn = (cb, ctx, params) -> ctx.get(params[0], cb)
+cbGetFn = (cb, ctx, params) -> ctx.get(params[0], [], cb)
 
 compileAndRenderTests = [
   ["Hello", {}, "Hello"]
@@ -76,7 +76,7 @@ tests["CompAndRender extends"] = (test) ->
   nct.loadTemplate ".extends base\nHello\n.block main\nt\n./block", "t"
   nct.loadTemplate "Base\n.block main\nBase\n./block", "base"
   nct.render "t", {}, (err, result) ->
-    test.same ["base"], nct.deps("t")
+    test.same ["base"], Object.keys(nct.deps("t"))
     test.same "Base\nt\n", result
     test.done()
 
@@ -92,7 +92,7 @@ tests["CompAndRender include"] = (test) ->
   nct.loadTemplate ".> sub", "t"
   nct.loadTemplate "{title}", "sub"
   nct.render "t", {title: "Hello"}, (err, result) ->
-    test.same ["sub"], nct.deps("t")
+    test.same ["sub"], Object.keys(nct.deps("t"))
     test.same "Hello", result
     test.done()
 
@@ -154,13 +154,13 @@ tests["Asynchronous context function"] = (test) ->
     content: (callback, context, params) ->
       filename = path.join(__dirname, "fixtures/#{params[0]}.json")
       fs.readFile filename, (err, f) ->
-        context.deps.push(filename)
+        context.deps[filename] = new Date().getTime()
         callback(null, JSON.parse(f.toString()))
 
   nct.loadTemplate ".# content post\n{title}\n./#", "t"
   nct.render "t", context, (err, result) ->
     test.same "Hello World\n", result
-    test.same [jsonfile], nct.deps("t")
+    test.same [jsonfile], Object.keys(nct.deps("t"))
     test.done()
 
 contexts =
@@ -185,11 +185,13 @@ nct.onLoad = (name, callback) ->
   tests["Integration #{testname}"] = (test) ->
     fs.readFile path.join(__dirname, "fixtures/#{testname}.nct"), (err, f) ->
       nct.loadTemplate f.toString(), testname
-      nct.render testname, contexts[testname], (err, result) ->
+      nct.render testname, contexts[testname], (err, result, filename, finished) ->
+        test.same testname, filename
+        test.same finished, true
         fs.readFile path.join(__dirname, "fixtures/#{testname}.txt"), (err, f) ->
           test.same(f.toString(), result)
           test.same deps[testname].map((f) -> path.join(__dirname, "fixtures/#{f}.nct")), 
-            nct.deps(testname)
+            Object.keys(nct.deps(testname))
           test.done()
 
 tests["Integration stamp"] = (test) ->
@@ -204,7 +206,29 @@ tests["Integration stamp"] = (test) ->
     nct.render "{slug}.html", context, (err, result, filename, finished) ->
       fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
         test.same(f.toString(), result)
-        test.same deps, nct.deps('{slug}.html')
+        test.same deps, Object.keys(nct.deps('{slug}.html'))
         test.done() if finished
+
+tests["Stamp dependency checking"] = (test) ->
+  context =
+    view: (cb,ctx,params,calledfrom) ->
+      if ctx.deps["view"]
+        cb(null, [{title: calledfrom, slug: "1"}])
+      else
+        ctx.deps["view"] = new Date().getTime()
+        cb(null, [{title: "One", slug: "1"}])
+
+  nct.loadTemplate ".# view\n{title}\n./#", "t"
+  nct.render "t", context, (err, result) ->
+    test.same "One\n", result
+    nct.render "t", context, (err, result) ->
+      test.same "each\n", result
+
+      nct.loadTemplate ".stamp view\n{title}\n./stamp", "{slug}"
+      nct.render "{slug}", context, (err, result) ->
+        test.same "One\n", result
+        nct.render "{slug}", context, (err, result) ->
+          test.same "stamp\n", result
+          test.done()
 
 module.exports = tests
