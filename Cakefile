@@ -21,8 +21,16 @@ task 'watch', 'Run development source watcher', ->
 
 # task 'test', 'Run tests', ->
 #   relay 'coffee', ["#{__dirname}/test/runner.coffee"]
-
+#
+noisyError = (data) ->
+  print data
+  regex = /\d+\sfailed,/m
+  if data.toString('utf8').match(regex)
+    exec 'afplay ~/.autotest.d/sound/sound_fx/red.mp3 2>&1 >/dev/null'
 
 task "test", "Run test", ->
-  {reporters} = require 'nodeunit'
-  reporters.default.run ['test']
+  relay 'nutter', ['--verbose','test'], noisyError
+
+task "testwatch", "Run test", ->
+  relay 'nutter', ['--watch','--verbose','test'], noisyError
+

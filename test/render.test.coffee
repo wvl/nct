@@ -1,37 +1,38 @@
 fs = require 'fs'
 path = require 'path'
 {debug,info} = require('triage')('debug')
-nct = require "../lib/nct"
+nct = require path.join(__dirname, "../lib/nct")
 
-tests =
-  "New Context": (test) ->
-    ctx = new nct.Context({"title": "hello"}, {})
-    ctx.get 'title', [], (err, result) ->
-      test.same "hello", result
-      test.done()
+suite "nct tests", {serial: true}
 
-  "Context push": (test) ->
-    ctx = new nct.Context({"title": "hello"}, {})
-    ctx = ctx.push({"post": "Hi"})
-    ctx.get 'title', [], (err, result) ->
-      test.same "hello", result
-      ctx.get 'post', [], (err, result) ->
-        test.same 'Hi', result
-        test.done()
+atest "New Context", ->
+  ctx = new nct.Context({"title": "hello"}, {})
+  ctx.get 'title', [], (err, result) ->
+    t.same "hello", result
+    t.done()
 
-  "Async function in context": (test) ->
-    fn = (cb) ->
-      process.nextTick () -> cb(null, "Hi Async!")
-    ctx = new nct.Context({"title": fn}, {})
-    ctx.get 'title', [], (err, result) ->
-      test.same "Hi Async!", result
-      test.done()
+atest "Context push", ->
+  ctx = new nct.Context({"title": "hello"}, {})
+  ctx = ctx.push({"post": "Hi"})
+  ctx.get 'title', [], (err, result) ->
+    t.same "hello", result
+    ctx.get 'post', [], (err, result) ->
+      t.same 'Hi', result
+      t.done()
 
-  "Context with synchronous function": (test) ->
-    ctx = new nct.Context({"title": () -> "Hello World"}, {})
-    ctx.get 'title', [], (err, result) ->
-      test.same "Hello World", result
-      test.done()
+atest "Async function in context", ->
+  fn = (cb) ->
+    process.nextTick () -> cb(null, "Hi Async!")
+  ctx = new nct.Context({"title": fn}, {})
+  ctx.get 'title', [], (err, result) ->
+    t.same "Hi Async!", result
+    t.done()
+
+atest "Context with synchronous function", ->
+  ctx = new nct.Context({"title": () -> "Hello World"}, {})
+  ctx.get 'title', [], (err, result) ->
+    t.same "Hello World", result
+    t.done()
 
 
 contextAccessors = [
@@ -42,16 +43,16 @@ contextAccessors = [
 ]
 
 contextAccessors.forEach ([attrs, context, expected]) ->
-  tests["Context accessors #{attrs}"] = (test) ->
+  atest "Context accessors #{attrs}", ->
     ctx = new nct.Context(context, {})
     ctx.mget attrs, [], (err, result) ->
-      test.same expected, result
-      test.done()
+      t.same expected, result
+      t.done()
 
 
 cbGetFn = (cb, ctx, params) -> ctx.get(params[0], [], cb)
 
-compileAndRenderTests = [
+compileAndRenders = [
   ["Hello", {}, "Hello"]
   ["Hello {title}", {title: "World!"}, "Hello World!"]
   ["Hello {person.name}", {person: {name: "Joe"}}, "Hello Joe"]
@@ -65,58 +66,58 @@ compileAndRenderTests = [
   [".# person\n{name}\n./#", {person: {'name': 'Joe'}}, "Joe\n"]
 ]
 
-compileAndRenderTests.forEach ([tmpl,ctx,toequal]) ->
-  tests["CompAndRender #{tmpl.replace(/\n/g,' | ')}"] = (test) ->
+compileAndRenders.forEach ([tmpl,ctx,toequal]) ->
+  atest "CompAndRender #{tmpl.replace(/\n/g,' | ')}", ->
     nct.loadTemplate tmpl, "t"
     nct.render "t", ctx, (err, result) ->
-      test.same toequal, result
-      test.done()
+      t.same toequal, result
+      t.done()
 
-tests["CompAndRender extends"] = (test) ->
+atest "CompAndRender extends", ->
   nct.loadTemplate ".extends base\nHello\n.block main\nt\n./block", "t"
   nct.loadTemplate "Base\n.block main\nBase\n./block", "base"
   nct.render "t", {}, (err, result) ->
-    test.same ["base"], Object.keys(nct.deps("t"))
-    test.same "Base\nt\n", result
-    test.done()
+    t.same ["base"], Object.keys(nct.deps("t"))
+    t.same "Base\nt\n", result
+    t.done()
 
-tests["CompAndRender extends 3 levels"] = (test) ->
+atest "CompAndRender extends 3 levels", ->
   nct.loadTemplate ".extends med\nHello\n.block main\nMAIN\n./block", "t"
   nct.loadTemplate ".extends base\n.block sidebar\nSIDEBAR\n./block", "med"
   nct.loadTemplate "BASE\n.block main\nBASEMAIN\n./block\n.block sidebar\nsidebar base\n./block", "base"
   nct.render "t", {}, (err, result) ->
-    test.same "BASE\nMAIN\nSIDEBAR\n", result
-    test.done()
+    t.same "BASE\nMAIN\nSIDEBAR\n", result
+    t.done()
 
-tests["CompAndRender include"] = (test) ->
+atest "CompAndRender include", ->
   nct.loadTemplate ".> sub", "t"
   nct.loadTemplate "{title}", "sub"
   nct.render "t", {title: "Hello"}, (err, result) ->
-    test.same ["sub"], Object.keys(nct.deps("t"))
-    test.same "Hello", result
-    test.done()
+    t.same ["sub"], Object.keys(nct.deps("t"))
+    t.same "Hello", result
+    t.done()
 
-tests["CompAndRender include recursive"] = (test) ->
+atest "CompAndRender include recursive", ->
   context = {name: '1', kids: [{name: '1.1', kids: [{name: '1.1.1', kids: []}] }] }
   nct.loadTemplate "{name}\n.# kids\n.> t\n./#", "t"
   nct.render "t", context, (err, result) ->
-    test.same "1\n1.1\n1.1.1\n", result
-    test.done()
+    t.same "1\n1.1\n1.1.1\n", result
+    t.done()
 
-tests["Stamp 1"] = (test) ->
+atest "Stamp 1", ->
   nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{stamp}"
   i = 0
   results = [["one\n", "1"],["two\n", "2"]]
   ctx = {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}]}
   nct.render "{stamp}", ctx, (err, result, stamped_name, finished) ->
-    test.same results[i][0], result
-    test.same results[i][1], stamped_name
+    t.same results[i][0], result
+    t.same results[i][1], stamped_name
     i++
     if finished
-      test.same 2, i
-      test.done()
+      t.same 2, i
+      t.done()
 
-tests["Stamp 2"] = (test) ->
+test "Stamp 2", ->
   nct.loadTemplate "Hi\n .stamp view posts\n{title}\n./stamp\n", "{year}/{slug}.html"
   i = 0
   results = {"2010/first.html":  "Hi\none\n", "2011/second.html": "Hi\ntwo\n"}
@@ -126,28 +127,28 @@ tests["Stamp 2"] = (test) ->
     doit: true
 
   nct.render "{year}/{slug}.html", ctx, (err, result, stamped_name, finished) ->
-    test.same results[stamped_name], result
+    t.same results[stamped_name], result
     i++
     if finished
-      test.same 2, i
-      test.done()
+      t.same 2, i
+      t.done()
 
 delay = (cb, ctx, params) ->
   setTimeout (() -> cb(null, "")), params[0] || 10
 
-tests["Stamp delays"] = (test) ->
+atest "Stamp delays", ->
   nct.loadTemplate ".stamp posts\n{title}\n./stamp\n{delay}", "{stamp}"
   i = 0
   results = {"1": "one\n","2": "two\n"}
   ctx = {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}], delay: delay}
   nct.render "{stamp}", ctx, (err, result, stamped_name, finished) ->
-    test.same results[stamped_name], result
+    t.same results[stamped_name], result
     i++
     if finished
-      test.same 2, i
-      test.done()
+      t.same 2, i
+      t.done()
 
-tests["Asynchronous context function"] = (test) ->
+atest "Asynchronous context function", ->
   jsonfile = path.join(__dirname, "fixtures/post.json")
   # fs.writeFileSync jsonfile, JSON.stringify({"title": "Hello World"})
   context =
@@ -159,9 +160,9 @@ tests["Asynchronous context function"] = (test) ->
 
   nct.loadTemplate ".# content post\n{title}\n./#", "t"
   nct.render "t", context, (err, result) ->
-    test.same "Hello World\n", result
-    test.same [jsonfile], Object.keys(nct.deps("t"))
-    test.done()
+    t.same "Hello World\n", result
+    t.same [jsonfile], Object.keys(nct.deps("t"))
+    t.done()
 
 contexts =
   'simple': {}
@@ -181,20 +182,20 @@ nct.onLoad = (name, callback) ->
   fs.readFile filename, (err, f) ->
     callback(null, f.toString(), filename)
 
-["example", "page"].forEach (testname) ->
-  tests["Integration #{testname}"] = (test) ->
-    fs.readFile path.join(__dirname, "fixtures/#{testname}.nct"), (err, f) ->
-      nct.loadTemplate f.toString(), testname
-      nct.render testname, contexts[testname], (err, result, filename, finished) ->
-        test.same testname, filename
-        test.same finished, true
-        fs.readFile path.join(__dirname, "fixtures/#{testname}.txt"), (err, f) ->
-          test.same(f.toString(), result)
-          test.same deps[testname].map((f) -> path.join(__dirname, "fixtures/#{f}.nct")), 
-            Object.keys(nct.deps(testname))
-          test.done()
+["example", "page"].forEach (tname) ->
+  atest "Integration #{tname}", ->
+    fs.readFile path.join(__dirname, "fixtures/#{tname}.nct"), (err, f) ->
+      nct.loadTemplate f.toString(), tname
+      nct.render tname, contexts[tname], (err, result, filename, finished) ->
+        t.same tname, filename
+        t.same finished, true
+        fs.readFile path.join(__dirname, "fixtures/#{tname}.txt"), (err, f) ->
+          t.same(f.toString(), result)
+          t.same deps[tname].map((f) -> path.join(__dirname, "fixtures/#{f}.nct")), 
+            Object.keys(nct.deps(tname))
+          t.done()
 
-tests["Integration stamp"] = (test) ->
+atest "Integration stamp", ->
   context =
     posts: [
       {title: "First Post", slug: "first"}
@@ -205,11 +206,11 @@ tests["Integration stamp"] = (test) ->
     nct.loadTemplate f.toString(), "{slug}.html" 
     nct.render "{slug}.html", context, (err, result, filename, finished) ->
       fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
-        test.same(f.toString(), result)
-        test.same deps, Object.keys(nct.deps('{slug}.html'))
-        test.done() if finished
+        t.same(f.toString(), result)
+        t.same deps, Object.keys(nct.deps('{slug}.html'))
+        t.done() if finished
 
-tests["Stamp dependency checking"] = (test) ->
+atest "Stamp dependency checking", ->
   context =
     view: (cb,ctx,params,calledfrom) ->
       if ctx.deps["view"]
@@ -220,15 +221,13 @@ tests["Stamp dependency checking"] = (test) ->
 
   nct.loadTemplate ".# view\n{title}\n./#", "t"
   nct.render "t", context, (err, result) ->
-    test.same "One\n", result
+    t.same "One\n", result
     nct.render "t", context, (err, result) ->
-      test.same "each\n", result
+      t.same "each\n", result
 
       nct.loadTemplate ".stamp view\n{title}\n./stamp", "{slug}"
       nct.render "{slug}", context, (err, result) ->
-        test.same "One\n", result
+        t.same "One\n", result
         nct.render "{slug}", context, (err, result) ->
-          test.same "stamp\n", result
-          test.done()
-
-module.exports = tests
+          t.same "stamp\n", result
+          t.done()
