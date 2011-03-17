@@ -24,9 +24,14 @@ task 'watch', 'Run development source watcher', ->
 #
 noisyError = (data) ->
   print data
-  regex = /\d+\sfailed,/m
-  if data.toString('utf8').match(regex)
-    exec 'afplay ~/.autotest.d/sound/sound_fx/red.mp3 2>&1 >/dev/null'
+  regex = /\d+\sfailed,/
+  s = data.toString('utf8')
+  if s.match(/\d+\spassed/)
+    if s.match(/\d+\sfailed,/)
+      exec 'afplay ~/.autotest.d/sound/sound_fx/ran_command.mp3 2>&1 >/dev/null'
+    else
+      exec 'afplay ~/.autotest.d/sound/sound_fx/green.mp3 2>&1 >/dev/null'
+
 
 task "test", "Run test", ->
   relay 'nutter', ['--verbose','test'], noisyError

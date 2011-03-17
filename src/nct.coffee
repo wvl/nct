@@ -1,5 +1,6 @@
 {debug,info} = require 'triage'
 _            = require 'underscore'
+async        = require 'async'
 compiler     = require './compiler'
 
 nct = {}
@@ -18,13 +19,38 @@ nct.renderTemplate = (source, context, name=null, callback) ->
 # Render template that has already been registered
 nct.render = (name, context, callback) ->
   nct.load name, null, (err, tmpl) ->
-    pending = null
-    tmpl new Context(context, tmpl), (err, result) ->
-      pending = result.iterations unless pending
-      callback(err, result.rendered, tmpl.stamped_name(result.slots), --pending==0)
+    ctx = new Context(context)
+    tmpl ctx, (err, result) ->
+      return callback(err) if err
+      result ctx, (err, rendered) ->
+        callback(err, rendered, ctx.deps)
 
-nct.deps = (name) ->
-  if templates[name] then templates[name].deps else {}
+stampFn = (name, command) ->
+  re = /\{(.+?)\}/g
+  slots = []
+  while (match = re.exec(name))
+    slots.push match[1]
+
+  return (context, callback) ->
+    ctx = new Context(context)
+
+    filled_slots = {}
+    async.forEach slots, ((key, callback) ->
+      ctx.get key, [], (err, result) ->
+        filled_slots[key] = result
+        callback()
+    ), (err) ->
+      stamped_name = name.replace /\{(.+?)\}/g, (matched, n) -> filled_slots[n]
+
+      command ctx, (err, result) ->
+        callback(err, result, stamped_name)
+
+nct.stamp = (name, context, callback) ->
+  nct.load name, null, (err, tmpl) ->
+    ctx = new Context(context)
+    ctx.stamp = true
+    tmpl ctx, (err, result) ->
+      callback(err, stampFn(name, result), ctx.deps, ctx.stamping)
 
 # Load a template: from registry, or fallback to onLoad
 nct.load = (name, context, callback) ->
@@ -38,7 +64,6 @@ nct.load = (name, context, callback) ->
         if templates[name]
           template_mapping[name] = filename if filename
           context.deps[template_mapping[name] or name] = new Date().getTime() if context
-          # context.deps.push(filename or name) if context
           callback(null, templates[name])
         else
           throw "After onLoad, not found #{name}"
@@ -57,34 +82,25 @@ do ->
   # Compile and register a template in this function namespace
   nct.register = (name, tmpl) ->
     # debug "Register #{name}", tmpl
-    fn = eval(tmpl)
-    fn.deps = {}
-    fn.source_name = name
-    re = /\{(.+?)\}/g
-    while (match = re.exec(name))
-      fn.slots = {} unless fn.slots
-      fn.slots[match[1]] = null
-    if fn.slots
-      fn.stamped_name = (slots) -> name.replace re, (matched, n) -> slots[n]
-    else
-      fn.stamped_name = () -> name
-    templates[name] = fn
+    templates[name] = eval(tmpl)
 
 
   write = (data) ->
-    result = new Result(data)
     return (context, callback) ->
-      callback(null, result)
+      callback(null, (context, callback) ->
+        callback(null, data))
 
   mgetout = (names, params) ->
     return (context, callback) ->
       context.mget names, params, (err, result) ->
-        callback(err, new Result(result))
+        callback(null, (context, callback) ->
+          callback(err, result))
 
   getout = (name, params) ->
     return (context, callback) ->
       context.get name, params, (err, result) ->
-        callback(err, new Result(result))
+        callback(null, (context, callback) ->
+          callback(err, result))
 
   mget = (names, params, calledfrom) ->
     return (context, callback) ->
@@ -99,78 +115,47 @@ do ->
       query context, (err, result) ->
         return body(context, callback) if result
         return elsebody(context, callback) if elsebody
-        callback null, new Result() 
+        callback null, (context, callback) ->
+          callback(null, "")
 
   multi = (commands, withstamp) ->
-    if withstamp
-      stamp_index = withstamp-1
-
-      return (context, callback) ->
-        pending = commands.length
-        results = []
-        stamps = []
-
-        commands.forEach (command, i) ->
-          command context, (err, result) ->
-            results[i] = result
-
-            if i==stamp_index
-              if pending == 1
-                callback(null, joinResults(results))
-                while (stampresult = stamps.pop())
-                  results[stamp_index] = stampresult
-                  callback(null, joinResults(results))
-              else
-                stamps.push(result)
-            else if --pending==1 && stamps.length
-              while (stampresult = stamps.pop())
-                results[stamp_index] = stampresult
-                callback(null, joinResults(results))
-    else
-      return (context, callback) ->
-        pending = commands.length
-        results = []
-        commands.forEach (command, i) ->
-          command context, (err, result) ->
-            results[i] = result
-            if pending == 1
-              output = joinResults(results)
-            callback(null, joinResults(results)) if --pending==0
-
-
+    return (context, callback) ->
+      pending = commands.length
+      results = []
+      commands.forEach (command, i) ->
+        command context, (err, result) ->
+          results[i] = result
+          callback(null, combineResults(results)) if --pending == 0
 
   each = (query, command) ->
     return (context, callback) ->
       query context, (err, loopvar) ->
         if _.isArray(loopvar)
           pending = loopvar.length
-          output = new Result()
-          return callback(null, output) if pending == 0
-          loopvar.forEach (item) ->
+          return callback(null, (ctx,cb) -> cb(null, "")) if pending == 0
+          results = []
+          loopvar.forEach (item, i) ->
             command context.push(item), (err, r) ->
-              output.join(r)
-              if --pending == 0
-                callback(null, output)
+              results[i] = r
+              callback(null, combineResults(results)) if --pending == 0
         else
           command context.push(loopvar), callback
 
   block = (name, command) ->
     return (context, callback) ->
-      command context, (err, result) ->
-        b = new Result("<<block:#{name}>>")
-        b.blocks[name] = result
-        callback(null, b)
+      command context, (err, block_command) ->
+        callback null, (context, callback) ->
+          context.blocks[name] = block_command unless context.blocks[name]
+          context.blocks[name](context, callback)
 
   extend = (name, command) ->
     return (context, callback) ->
       nct.load name, context, (err, base) ->
-        base context.push({'__extended': true}), (err, base_results) ->
-          command context, (err, child_results) ->
-            result = new Result(base_results.rendered).merge(base_results).merge(child_results)
-            context.get '__extended', [], (err, extended) ->
-              result = result.fill() unless extended
-              callback(err, result)
-
+        command context, (err, child_results) ->
+          base context, (err, base_results) ->
+            callback null, (context, callback) ->
+              child_results context, (err, result) ->
+                base_results context, callback
 
   include = (name) ->
     return (context, callback) ->
@@ -179,60 +164,37 @@ do ->
 
   stamp = (query, command) ->
     return (context, callback) ->
-      throw "No slots defined" unless context.slots
-      query context, (err, iterator) ->
-        throw "Stamp called with non array #{iterator}" unless _.isArray(iterator)
-        throw "What to do if stamp query is empty?" unless iterator.length
-        _.each iterator, (obj) ->
-          ctx = context.push(obj)
-          command ctx, (err, result) ->
-            result.iterations = iterator.length
-            result.fillSlots ctx, callback
+      return callback("Stamp called from render") unless context.stamp
+      query context, (err, stamping) ->
+        context.stamping = stamping
+        callback null, (context, callback) ->
+          command context, (err, result) ->
+            result context, (err, rendered) ->
+              callback(err, rendered)
 
-# Result is the class for holding the return values of any command.
-# It holds the rendered string, plus stamped slot data, and rendered blocks.
-class Result
-  constructor: (@rendered="", @blocks={}) ->
-    @iterations = 1
-
-  join: (other) ->
-    @rendered += other.rendered
-    @iterations = @iterations * other.iterations
-    @slots = other.slots if other.slots
-    _.extend(@blocks, other.blocks)
-    this
-
-  merge: (other) ->
-    @iterations = @iterations * other.iterations
-    @slots = other.slots if other.slots
-    _.extend(@blocks, other.blocks)
-    this
-
-  fillSlots: (context, callback) ->
-    @slots = _.clone(context.slots)
-    numslots = _.size(context.slots)
-    _.each @slots, (value,key) =>
-      context.get key, [], (err, result) =>
-        @slots[key] = result
-        callback(null, this) if --numslots == 0
-
-  fill: () ->
-    regex = /\<\<block:(.+?)\>\>/g
-    @rendered = @rendered.replace regex, (str, name) =>
-      @blocks[name].rendered
-    this
-
-# Sums up an array of results
-joinResults = (results) ->
-  _.reduce(results, ((memo, r) -> memo.join(r)), new Result())
+combineResults = (results) ->
+  return (context, callback) ->
+    async.reduce results, "", ((memo, result, callback) ->
+      result context, (err, r) ->
+        callback(null, memo + r)
+    ), callback
 
 
 class Context
-  constructor: (ctx, @base, @tail) ->
+  constructor: (ctx, @tail) ->
     @head = ctx
-    @blocks = if @tail then @tail.blocks else {}
-    @slots = @base.slots
-    @deps = @base.deps
+    @blocks = @tail?.blocks || {}
+    @deps = @tail?.deps || {}
+
+  getSync: (key, params, callback) ->
+    ctx = this
+    while ctx
+      if !_.isArray(ctx.head) && typeof ctx.head == "object"
+        value = ctx.head[key]
+        if value != undefined
+          return value
+      ctx = ctx.tail
+    return null
 
   get: (key, params, callback, calledfrom) ->
     ctx = this
@@ -248,7 +210,7 @@ class Context
           else
             return callback(null, value)
       ctx = ctx.tail
-    return callback(null, null)
+    return callback(null, "")
 
   # Takes an array of keys to traverse down. Does not do any
   # backtracking -- the first key will determine which object
@@ -260,7 +222,7 @@ class Context
       return callback(null, result)
 
   push: (newctx) ->
-    return new Context(newctx, @base, this)
+    return new Context(newctx, this)
 
 module.exports = nct
 module.exports.Context = Context

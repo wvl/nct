@@ -1,9 +1,9 @@
 .extends _base
+.stamp posts
 .block head
 <script src="test.js" />
 ./block
 .block body
-.stamp posts
 <h1>{title}</h1>
-./stamp
 ./block body
+./stamp
