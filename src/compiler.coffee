@@ -47,7 +47,12 @@ process_nodes = (tokens, processUntilFn) ->
     break if processUntilFn && processUntilFn(token[0])
     output.push(builders[token[0]](token[1], token[2], tokens))
     stamp = output.length if token[0] == 'stamp'
-  if output.length > 1 then "multi([#{output.join(',')}], #{stamp})" else output[0]
+  if output.length > 1
+    "multi([#{output.join(',')}], #{stamp})" 
+  else if output.length == 1
+    output[0]
+  else
+    "write('')"
 
 
 builders =

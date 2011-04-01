@@ -1,6 +1,7 @@
 fs = require 'fs'
 path = require 'path'
 {debug,info} = require('triage')('debug')
+util = require 'util'
 nct = require path.join(__dirname, "../lib/nct")
 
 suite "nct tests", {serial: true, stopOnFail: true}
@@ -64,6 +65,7 @@ compileAndRenders = [
   [".if doit\n{name}\n.else\nNoope\n./if", {doit: false, name: "Joe"}, "Noope\n"]
   [".# posts\n{title}\n./#", {posts: [{'title': 'Hello'},{'title':'World'}]}, "Hello\nWorld\n"]
   [".# person\n{name}\n./#", {person: {'name': 'Joe'}}, "Joe\n"]
+  [".# person\n./#", {person: {'name': 'Joe'}}, ""]
 ]
 
 compileAndRenders.forEach ([tmpl,ctx,toequal]) ->
@@ -119,7 +121,7 @@ atest "Stamp from render", ->
   nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{stamp}"
   ctx = {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}]}
   nct.render "{stamp}", ctx, (err, result, stamped_name) ->
-    t.tt -> err.match(/Stamp called from render/)
+    t.t -> [err.match(/Stamp called from render/), err]
     t.done()
 
 test "Stamp 2", ->
@@ -257,3 +259,20 @@ atest "Custom context lookups by command", ->
         t.same "One\n", result
         t.same "1", name
         t.done()
+
+atest "Failing template", ->
+  context =
+    view: (cb, ctx, params) ->
+      array = [{title: "title: #{x}"} for x in [0..1000]]
+      cb(null, array[0])
+
+  filename = path.join(__dirname, "fixtures/failing.html.nct")
+  fs.readFile filename, (err, fd) ->
+    nct.loadTemplate fd.toString(), filename
+    nct.render filename, context, (err, rendered, deps) ->
+      t.ok !err
+      # util.debug(rendered)
+      t.ok rendered.match(/title: 10/)
+      # info "rendered", rendered
+      t.done()
+

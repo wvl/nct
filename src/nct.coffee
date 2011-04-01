@@ -1,7 +1,8 @@
 {debug,info} = require 'triage'
 _            = require 'underscore'
-async        = require 'async'
+fa           = require 'fa'
 compiler     = require './compiler'
+util         = require 'util'
 
 nct = {}
 nct.tokenize = compiler.tokenize
@@ -35,7 +36,7 @@ stampFn = (name, command) ->
     ctx = new Context(context)
 
     filled_slots = {}
-    async.forEach slots, ((key, callback) ->
+    fa.each slots, ((key, callback) ->
       ctx.get key, [], (err, result) ->
         filled_slots[key] = result
         callback()
@@ -66,12 +67,17 @@ nct.load = (name, context, callback) ->
           context.deps[template_mapping[name] or name] = new Date().getTime() if context
           callback(null, templates[name])
         else
-          throw "After onLoad, not found #{name}"
+          throw new Error("After onLoad, not found #{name}")
     else
-      throw "Template not found: #{name}"
+      throw new Error("Template not found: #{name}")
 
 nct.loadTemplate = (tmplStr, name) ->
-  nct.register(name, nct.compile(tmplStr))
+  try
+    tmpl = nct.compile(tmplStr)
+  catch e
+    e.message = "Compile error for #{name}"
+    throw e
+  nct.register(name, tmpl)
 
 nct.clear = ->
   templates = {}
@@ -82,8 +88,12 @@ do ->
   # Compile and register a template in this function namespace
   nct.register = (name, tmpl) ->
     # debug "Register #{name}", tmpl
-    templates[name] = eval(tmpl)
-
+    try
+      templates[name] = eval(tmpl)
+      null
+    catch e
+      e.message = "Error eval'ing compiled template: #{name}"
+      throw e
 
   write = (data) ->
     return (context, callback) ->
@@ -131,13 +141,10 @@ do ->
     return (context, callback) ->
       query context, (err, loopvar) ->
         if _.isArray(loopvar)
-          pending = loopvar.length
-          return callback(null, (ctx,cb) -> cb(null, "")) if pending == 0
-          results = []
-          loopvar.forEach (item, i) ->
-            command context.push(item), (err, r) ->
-              results[i] = r
-              callback(null, combineResults(results)) if --pending == 0
+          fa.queue(10).map loopvar, ((item, callback) ->
+            command context.push(item), callback
+          ), (err, results) ->
+            callback(null, combineResults(results))
         else
           command context.push(loopvar), callback
 
@@ -174,9 +181,11 @@ do ->
 
 combineResults = (results) ->
   return (context, callback) ->
-    async.reduce results, "", ((memo, result, callback) ->
-      result context, (err, r) ->
-        callback(null, memo + r)
+    fa.queue(10).reduce results, "", ((memo, result, callback) ->
+      try
+        result context, (err, r) -> callback(null, memo + r)
+      catch e
+        callback(new Error("Error rendering template"))
     ), callback
 
 
