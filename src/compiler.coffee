@@ -10,7 +10,7 @@ tokenize = (str) ->
   # /\{\{(.*?)\}\}|\{(\#|if|else|extends|block)(.*?)\}\s*|\{\/(if|extends|block)(.*?)\}\s*/gi
   regex = ///
       \{(.*?)\}
-    | ^\s*\.(if|\#|\>|else|extends|block|stamp)(.*?)$\n?
+    | ^\s*\.(if|\#|\>|else|extends|block|stamp|include)(.*?)$\n?
     | ^\s*\./(if|\#|block|stamp)(.*?)$\n?
   ///gim
   index = 0
@@ -88,6 +88,10 @@ builders =
     query = builders['vararg'](key, params, false, 'each')
     body = process_nodes tokens, (tag) -> tag=='end#'
     "each(#{query}, #{body})"
+
+  'include': (key,params,tokens) ->
+    query = builders['vararg'](key, params, false, 'include')
+    "include(#{query})"
 
   '>': (key,ignore,tokens) ->
     "partial('#{key}')"

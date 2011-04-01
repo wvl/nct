@@ -106,6 +106,13 @@ atest "CompAndRender partial recursive", ->
     t.same "1\n1.1\n1.1.1\n", result
     t.done()
 
+atest "Render include", ->
+  include_path = path.join(__dirname, 'fixtures', 'example.txt')
+  nct.loadTemplate ".include inc", "t"
+  nct.render "t", {inc: include_path}, (err, result) ->
+    t.same "  Hello World\n", result
+    t.done()
+
 atest "Stamp 1", ->
   nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{stamp}"
   ctx = {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}]}

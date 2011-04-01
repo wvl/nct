@@ -1,3 +1,5 @@
+path         = require 'path'
+fs           = require 'fs'
 {debug,info} = require 'triage'
 _            = require 'underscore'
 fa           = require 'fa'
@@ -92,7 +94,7 @@ do ->
       templates[name] = eval(tmpl)
       null
     catch e
-      e.message = "Error eval'ing compiled template: #{name}"
+      util.debug tmpl
       throw e
 
   write = (data) ->
@@ -168,6 +170,17 @@ do ->
     return (context, callback) ->
       nct.load name, context, (err, thepartial) ->
         thepartial context, callback
+
+  include = (query) ->
+    return (context, callback) ->
+      query context, (err, includefile) ->
+        path.exists includefile, (exists) ->
+          if exists
+            fs.readFile includefile, (err, fd) ->
+              callback null, (context, callback) ->
+                callback(err, fd.toString())
+          else
+            callback null, (ctx, cb) -> cb(null, "")
 
   stamp = (query, command) ->
     return (context, callback) ->
