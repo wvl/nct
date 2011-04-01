@@ -1,4 +1,5 @@
 {debug,info} = require 'triage'
+util = require 'util'
 
 tokenize = (str) ->
 
@@ -6,6 +7,10 @@ tokenize = (str) ->
     segments = input.trim().split(/\s+/)
     segments[0] = segments[0].split('.') #if /\./.test(segments[0])
     segments
+
+  parse_filters = (input) ->
+    segments = input.trim().split("|")
+    [segments[0], segments.slice(1).map((seg) -> seg.trim())]
 
   # /\{\{(.*?)\}\}|\{(\#|if|else|extends|block)(.*?)\}\s*|\{\/(if|extends|block)(.*?)\}\s*/gi
   regex = ///
@@ -24,8 +29,9 @@ tokenize = (str) ->
 
     index = regex.lastIndex
     if match[5] # variable
-      [key, params...] = parse_args(match[5])
-      result.push(['vararg', key, params])
+      [args,filters] = parse_filters(match[5])
+      [key, params...] = parse_args(args)
+      result.push(['vararg', key, params, filters])
     else if match[1] or match[6]
       [tag,args] = if match[1] then [match[1],match[2]] else [match[6], match[7]]
       if tag == 'text'
@@ -42,12 +48,14 @@ tokenize = (str) ->
   regex.lastIndex = 0
   result
 
-process_nodes = (tokens, processUntilFn) ->
+processNodes = (tokens, processUntilFn) ->
   output = []
   stamp = false
   while token = tokens.shift()
     break if processUntilFn && processUntilFn(token[0])
-    output.push(builders[token[0]](token[1], token[2], tokens))
+    args = token.slice(1)
+    args.push(tokens)
+    output.push(builders[token[0]].apply(builders, args))
     stamp = output.length if token[0] == 'stamp'
   if output.length > 1
     "multi([#{output.join(',')}], #{stamp})" 
@@ -56,69 +64,75 @@ process_nodes = (tokens, processUntilFn) ->
   else
     "write('')"
 
+# Convert array to eval'able string
+strArray = (input) ->
+  wrap = input.map (p) -> "'#{p}'"
+  "[#{wrap.join(',')}]"
 
-conditional_query = (key, params, calledfrom='') ->
+buildQuery = (key, params, calledfrom) ->
+  if key.length > 1
+    "mget(#{strArray(key)}, #{strArray(params)}, '#{calledfrom}')"
+  else
+    "get('#{key}', #{strArray(params)}, '#{calledfrom}')"
+
+conditionalQuery = (key, params, calledfrom='') ->
   if key[0][0] != '#'
     "'#{key}'"
   else
     key[0] = key[0].slice(1)
-    builders['vararg'](key, params, false, calledfrom)
+    buildQuery(key, params, calledfrom)
 
 builders =
-  'vararg': (key, params, output=true, calledfrom='') ->
-    paramargs = params.map (p) -> "'#{p}'"
-    paramargs = "[#{paramargs.join(',')}]"
-    out = if output then "out" else ""
+  'vararg': (key, params, filters) ->
     if key.length > 1
-      toks = key.map (t) -> "'#{t}'"
-      "mget#{out}([#{toks.join(',')}], #{paramargs}, '#{calledfrom}')"
+      "mgetout(#{strArray(key)}, #{strArray(params)}, #{strArray(filters)})"
     else
-      "get#{out}('#{key.join(',')}', #{paramargs}, '#{calledfrom}')"
+      "getout('#{key}', #{strArray(params)}, #{strArray(filters)})"
 
   'text': (str) ->
     "write('#{escapeJs(str)}')"
 
   'if': (key,params,tokens) ->
     waselse = false
-    body = process_nodes tokens, (tag) ->
+    body = processNodes tokens, (tag) ->
       if tag=='else' || tag=='endif'
         waselse = true if tag=='else'
         return true
       else
         return false
     elsebody = if waselse
-      process_nodes tokens, (tag) -> return true if tag=='endif'
+      processNodes tokens, (tag) -> return true if tag=='endif'
     else
       null
-    query = builders['vararg'](key, params, false, 'if')
+    query = buildQuery(key, params, 'if')
     "doif(#{query}, #{body}" + if elsebody then ", #{elsebody})" else ")"
 
   '#': (key,params,tokens) ->
-    query = builders['vararg'](key, params, false, 'each')
-    body = process_nodes tokens, (tag) -> tag=='end#'
+    query = buildQuery(key, params, 'each')
+    body = processNodes tokens, (tag) -> tag=='end#'
     "each(#{query}, #{body})"
 
   'include': (key,params,tokens) ->
-    query = conditional_query(key, params, 'include')
+    query = conditionalQuery(key, params, 'include')
     "include(#{query})"
 
   '>': (key,params,tokens) ->
-    query = conditional_query(key, params, 'partial')
+    query = conditionalQuery(key, params, 'partial')
     "partial(#{query})"
 
   'stamp': (key, params, tokens) ->
-    body = process_nodes tokens, (tag) -> tag=='endstamp'
-    query = builders['vararg'](key, params, false, 'stamp')
+    body = processNodes tokens, (tag) -> tag=='endstamp'
+    query = buildQuery(key, params, 'stamp')
     "stamp(#{query}, #{body})"
 
   'extends': (key, params, tokens) ->
-    body = process_nodes tokens
-    query = conditional_query(key, params, 'extends')
+    body = processNodes tokens
+    query = conditionalQuery(key, params, 'extends')
     "extend(#{query}, #{body})"
 
   'block': (key, params, tokens) ->
-    body = process_nodes tokens, (tag) -> tag=='endblock'
-    query = conditional_query(key, params, 'block')
+    body = processNodes tokens, (tag) -> tag=='endblock'
+    query = conditionalQuery(key, params, 'block')
     "block(#{query}, #{body})"
 
 BS = /\\/g
@@ -146,5 +160,5 @@ escapeJs = (s) ->
   return s
 
 exports.compile = (src) ->
-  process_nodes(tokenize(src))
+  processNodes(tokenize(src))
 

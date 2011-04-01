@@ -5,6 +5,7 @@ _            = require 'underscore'
 fa           = require 'fa'
 compiler     = require './compiler'
 util         = require 'util'
+_.mixin        require 'underscore.string'
 
 nct = {}
 nct.tokenize = compiler.tokenize
@@ -84,7 +85,7 @@ nct.loadTemplate = (tmplStr, name=null) ->
   try
     tmpl = nct.compile(tmplStr)
   catch e
-    e.message = "Compile error for #{name}"
+    util.debug "Compile error for #{name}"
     throw e
   nct.register(tmpl, name)
 
@@ -92,6 +93,10 @@ nct.clear = ->
   templates = {}
   template_mapping = {}
 
+nct.filters =
+  h: (v) -> _.escapeHTML(v)
+  s: (v) -> v
+  titleize: (v) -> _.titleize(v)
 
 do ->
   # Compile and register a template in this function namespace
@@ -105,22 +110,30 @@ do ->
       util.debug tmpl
       throw e
 
+  applyFilters = (data, filters) ->
+    data = nct.filters.h(data) unless _.include(filters, 's')
+    data = _.reduce filters, ((memo,filter) ->
+      return memo unless nct.filters[filter]
+      nct.filters[filter](memo)
+    ), data
+    data
+
   write = (data) ->
     return (context, callback) ->
       callback(null, (context, callback) ->
         callback(null, data))
 
-  mgetout = (names, params) ->
+  mgetout = (names, params, filters) ->
     return (context, callback) ->
       context.mget names, params, (err, result) ->
-        callback(null, (context, callback) ->
-          callback(err, result))
+        callback null, (context, callback) ->
+          callback(err, applyFilters(result, filters))
 
-  getout = (name, params) ->
+  getout = (name, params, filters) ->
     return (context, callback) ->
       context.get name, params, (err, result) ->
-        callback(null, (context, callback) ->
-          callback(err, result))
+        callback null, (context, callback) ->
+          callback(err, applyFilters(result, filters))
 
   mget = (names, params, calledfrom) ->
     return (context, callback) ->

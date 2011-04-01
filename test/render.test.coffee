@@ -70,6 +70,10 @@ compileAndRenders = [
 
   ["{if content post}{post.title}{/if}", {content: cbGetFn, post: {title: 'Hello'}}, "Hello"]
   ["{# person}{name}{/# person}", {person: {'name': 'Joe'}}, "Joe"]
+
+  ["{ noescape | s }", {noescape: "<h1>Hello</h1>"}, "<h1>Hello</h1>"]
+  ["<h1>{ noescape | s | titleize }</h1>", {noescape: "hello"}, "<h1>Hello</h1>"]
+  ["{ escape }", {escape: "<h1>Hello</h1>"}, "&lt;h1&gt;Hello&lt;/h1&gt;"]
 ]
 
 compileAndRenders.forEach ([tmpl,ctx,toequal]) ->
