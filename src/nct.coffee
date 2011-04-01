@@ -14,19 +14,26 @@ nct.compile  = compiler.compile
 templates = {}
 template_mapping = {}
 
+doRender = (tmpl, context, callback) ->
+  ctx = new Context(context)
+  tmpl ctx, (err, result) ->
+    return callback(err) if err
+    result ctx, (err, rendered) ->
+      callback(err, rendered, ctx.deps)
+
 # Render template passed in as source template
-nct.renderTemplate = (source, context, name=null, callback) ->
-  callback = name if callback == undefined
-  callback(null, source)
+nct.renderTemplate = (source, context, name, callback) ->
+  if !callback
+    callback = name
+    name = null
+
+  tmpl = nct.loadTemplate(source, name)
+  doRender tmpl, context, callback
 
 # Render template that has already been registered
 nct.render = (name, context, callback) ->
   nct.load name, null, (err, tmpl) ->
-    ctx = new Context(context)
-    tmpl ctx, (err, result) ->
-      return callback(err) if err
-      result ctx, (err, rendered) ->
-        callback(err, rendered, ctx.deps)
+    doRender tmpl, context, callback
 
 stampFn = (name, command) ->
   re = /\{(.+?)\}/g
@@ -73,13 +80,13 @@ nct.load = (name, context, callback) ->
     else
       throw new Error("Template not found: #{name}")
 
-nct.loadTemplate = (tmplStr, name) ->
+nct.loadTemplate = (tmplStr, name=null) ->
   try
     tmpl = nct.compile(tmplStr)
   catch e
     e.message = "Compile error for #{name}"
     throw e
-  nct.register(name, tmpl)
+  nct.register(tmpl, name)
 
 nct.clear = ->
   templates = {}
@@ -88,11 +95,12 @@ nct.clear = ->
 
 do ->
   # Compile and register a template in this function namespace
-  nct.register = (name, tmpl) ->
+  nct.register = (tmpl, name=null) ->
     # debug "Register #{name}", tmpl
     try
-      templates[name] = eval(tmpl)
-      null
+      template = eval(tmpl)
+      templates[name] = template if name
+      template
     catch e
       util.debug tmpl
       throw e

@@ -70,8 +70,7 @@ compileAndRenders = [
 
 compileAndRenders.forEach ([tmpl,ctx,toequal]) ->
   atest "CompAndRender #{tmpl.replace(/\n/g,' | ')}", ->
-    nct.loadTemplate tmpl, "t"
-    nct.render "t", ctx, (err, result) ->
+    nct.renderTemplate tmpl, ctx, (err, result) ->
       t.same toequal, result
       t.done()
 
@@ -92,9 +91,8 @@ atest "CompAndRender extends 3 levels", ->
     t.done()
 
 atest "CompAndRender partial", ->
-  nct.loadTemplate ".> sub", "t"
   nct.loadTemplate "{title}", "sub"
-  nct.render "t", {title: "Hello"}, (err, result, deps) ->
+  nct.renderTemplate ".> sub", {title: "Hello"}, "t", (err, result, deps) ->
     t.same ["sub"], Object.keys(deps)
     t.same "Hello", result
     t.done()
