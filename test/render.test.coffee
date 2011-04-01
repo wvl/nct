@@ -82,6 +82,10 @@ compileAndRenders.forEach ([tmpl,ctx,toequal]) ->
       t.same toequal, result
       t.done()
 
+atest "template filter", ->
+  nct.renderTemplate "{ body | t }", {body: "{realbody}", realbody: "Hello!"}, (err, result) ->
+    t.same "Hello!", result
+    t.done()
 
 atest "CompAndRender extends", ->
   nct.loadTemplate ".extends base\nHello\n.block main\nt\n./block", "t"

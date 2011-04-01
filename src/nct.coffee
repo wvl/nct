@@ -94,9 +94,15 @@ nct.clear = ->
   template_mapping = {}
 
 nct.filters =
-  h: (v) -> _.escapeHTML(v)
-  s: (v) -> v
-  titleize: (v) -> _.titleize(v)
+  h: (v, ctx, cb) -> cb(null, _.escapeHTML(v))
+  s: (v, ctx, cb) -> cb(null, v)
+
+  # Render as an nct template
+  t: (v, ctx, cb) ->
+    tmpl = nct.loadTemplate(v)
+    tmpl ctx, (err, result) -> result ctx, cb
+
+  titleize: (v, ctx, cb) -> cb(null, _.titleize(v))
 
 do ->
   # Compile and register a template in this function namespace
@@ -110,13 +116,12 @@ do ->
       util.debug tmpl
       throw e
 
-  applyFilters = (data, filters) ->
-    data = nct.filters.h(data) unless _.include(filters, 's')
-    data = _.reduce filters, ((memo,filter) ->
-      return memo unless nct.filters[filter]
-      nct.filters[filter](memo)
-    ), data
-    data
+  applyFilters = (data, filters, context, callback) ->
+    filters.splice(0, 0, 'h') unless _.include(filters, 's')
+    fa.reduce filters, data, ((memo, filter, callback) ->
+      callback(null, memo) unless nct.filters[filter]
+      nct.filters[filter](memo, context, callback)
+    ), callback
 
   write = (data) ->
     return (context, callback) ->
@@ -126,14 +131,16 @@ do ->
   mgetout = (names, params, filters) ->
     return (context, callback) ->
       context.mget names, params, (err, result) ->
-        callback null, (context, callback) ->
-          callback(err, applyFilters(result, filters))
+        applyFilters result, filters, context, (err, result) ->
+          callback null, (context, callback) ->
+            callback(err, result)
 
   getout = (name, params, filters) ->
     return (context, callback) ->
       context.get name, params, (err, result) ->
-        callback null, (context, callback) ->
-          callback(err, applyFilters(result, filters))
+        applyFilters result, filters, context, (err, result) ->
+          callback null, (context, callback) ->
+            callback(err, result)
 
   mget = (names, params, calledfrom) ->
     return (context, callback) ->
