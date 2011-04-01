@@ -168,8 +168,9 @@ do ->
 
   partial = (name) ->
     return (context, callback) ->
-      nct.load name, context, (err, thepartial) ->
-        thepartial context, callback
+      fa.if _.isFunction(name), ((cb) -> name(context, cb)), ((cb) -> cb(null, name)), (err, name) ->
+        nct.load name, context, (err, thepartial) ->
+          thepartial context, callback
 
   include = (query) ->
     return (context, callback) ->

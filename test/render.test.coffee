@@ -99,6 +99,14 @@ atest "CompAndRender partial", ->
     t.same "Hello", result
     t.done()
 
+atest "CompAndRender programmatic partial", ->
+  nct.loadTemplate ".> #subtemplate", "t"
+  nct.loadTemplate "{title}", "sub"
+  nct.render "t", {title: "Hello", subtemplate: 'sub'}, (err, result, deps) ->
+    t.same ["sub"], Object.keys(deps)
+    t.same "Hello", result
+    t.done()
+
 atest "CompAndRender partial recursive", ->
   context = {name: '1', kids: [{name: '1.1', kids: [{name: '1.1.1', kids: []}] }] }
   nct.loadTemplate "{name}\n.# kids\n.> t\n./#", "t"
@@ -108,7 +116,7 @@ atest "CompAndRender partial recursive", ->
 
 atest "Render include", ->
   include_path = path.join(__dirname, 'fixtures', 'example.txt')
-  nct.loadTemplate ".include inc", "t"
+  nct.loadTemplate ".include #inc", "t"
   nct.render "t", {inc: include_path}, (err, result) ->
     t.same "  Hello World\n", result
     t.done()

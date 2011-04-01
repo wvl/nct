@@ -27,8 +27,6 @@ tokenize = (str) ->
     else if match[2]
       if match[2] == 'text'
         result.push(['text', match[3]])
-      else if match[2] == '>' or match[2] == 'extends' or match[2] == 'block'
-        result.push([match[2], match[3].trim(), null])
       else
         [key, params...] = parse_args(match[3])
         result.push([match[2], key, params])
@@ -54,6 +52,13 @@ process_nodes = (tokens, processUntilFn) ->
   else
     "write('')"
 
+
+conditional_query = (key, params, calledfrom='') ->
+  if key[0][0] != '#'
+    "'#{key}'"
+  else
+    key[0] = key[0].slice(1)
+    builders['vararg'](key, params, false, calledfrom)
 
 builders =
   'vararg': (key, params, output=true, calledfrom='') ->
@@ -90,24 +95,27 @@ builders =
     "each(#{query}, #{body})"
 
   'include': (key,params,tokens) ->
-    query = builders['vararg'](key, params, false, 'include')
+    query = conditional_query(key, params, 'include')
     "include(#{query})"
 
-  '>': (key,ignore,tokens) ->
-    "partial('#{key}')"
+  '>': (key,params,tokens) ->
+    query = conditional_query(key, params, 'partial')
+    "partial(#{query})"
 
   'stamp': (key, params, tokens) ->
     body = process_nodes tokens, (tag) -> tag=='endstamp'
     query = builders['vararg'](key, params, false, 'stamp')
     "stamp(#{query}, #{body})"
 
-  'extends': (key, ignore, tokens) ->
+  'extends': (key, params, tokens) ->
     body = process_nodes tokens
-    "extend('#{key}', #{body})"
+    query = conditional_query(key, params, 'extends')
+    "extend(#{query}, #{body})"
 
-  'block': (key, ignore, tokens) ->
+  'block': (key, params, tokens) ->
     body = process_nodes tokens, (tag) -> tag=='endblock'
-    "block('#{key}', #{body})"
+    query = conditional_query(key, params, 'block')
+    "block(#{query}, #{body})"
 
 BS = /\\/g
 CR = /\r/g
