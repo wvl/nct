@@ -91,7 +91,7 @@ atest "CompAndRender extends 3 levels", ->
     t.same "BASE\nMAIN\nSIDEBAR\n", result
     t.done()
 
-atest "CompAndRender include", ->
+atest "CompAndRender partial", ->
   nct.loadTemplate ".> sub", "t"
   nct.loadTemplate "{title}", "sub"
   nct.render "t", {title: "Hello"}, (err, result, deps) ->
@@ -99,7 +99,7 @@ atest "CompAndRender include", ->
     t.same "Hello", result
     t.done()
 
-atest "CompAndRender include recursive", ->
+atest "CompAndRender partial recursive", ->
   context = {name: '1', kids: [{name: '1.1', kids: [{name: '1.1.1', kids: []}] }] }
   nct.loadTemplate "{name}\n.# kids\n.> t\n./#", "t"
   nct.render "t", context, (err, result) ->

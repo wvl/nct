@@ -164,10 +164,10 @@ do ->
               child_results context, (err, result) ->
                 base_results context, callback
 
-  include = (name) ->
+  partial = (name) ->
     return (context, callback) ->
-      nct.load name, context, (err, included) ->
-        included context, callback
+      nct.load name, context, (err, thepartial) ->
+        thepartial context, callback
 
   stamp = (query, command) ->
     return (context, callback) ->

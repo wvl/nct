@@ -90,7 +90,7 @@ builders =
     "each(#{query}, #{body})"
 
   '>': (key,ignore,tokens) ->
-    "include('#{key}')"
+    "partial('#{key}')"
 
   'stamp': (key, params, tokens) ->
     body = process_nodes tokens, (tag) -> tag=='endstamp'
