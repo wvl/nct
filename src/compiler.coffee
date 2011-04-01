@@ -77,7 +77,7 @@ buildQuery = (key, params, calledfrom) ->
 
 conditionalQuery = (key, params, calledfrom='') ->
   if key[0][0] != '#'
-    "'#{key}'"
+    "'#{key.join('.')}'"
   else
     key[0] = key[0].slice(1)
     buildQuery(key, params, calledfrom)

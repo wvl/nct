@@ -130,14 +130,16 @@ do ->
 
   mgetout = (names, params, filters) ->
     return (context, callback) ->
-      context.mget names, params, (err, result) ->
+      context.mget names, params, (err, result, skip=false) ->
+        filters.push('s') if skip
         applyFilters result, filters, context, (err, result) ->
           callback null, (context, callback) ->
             callback(err, result)
 
   getout = (name, params, filters) ->
     return (context, callback) ->
-      context.get name, params, (err, result) ->
+      context.get name, params, (err, result, skip=false) ->
+        filters.push('s') if skip
         applyFilters result, filters, context, (err, result) ->
           callback null, (context, callback) ->
             callback(err, result)
