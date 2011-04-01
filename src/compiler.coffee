@@ -9,7 +9,9 @@ tokenize = (str) ->
 
   # /\{\{(.*?)\}\}|\{(\#|if|else|extends|block)(.*?)\}\s*|\{\/(if|extends|block)(.*?)\}\s*/gi
   regex = ///
-      \{(.*?)\}
+      \{(if|\#|\>|else|extends|block|stamp|include)(.*?)\}
+    | \{/(if|\#|block|stamp)(.*?)\}
+    |  \{(.*?)\}
     | ^\s*\.(if|\#|\>|else|extends|block|stamp|include)(.*?)$\n?
     | ^\s*\./(if|\#|block|stamp)(.*?)$\n?
   ///gim
@@ -21,17 +23,19 @@ tokenize = (str) ->
       result.push(['text', str.slice(index, match.index)])
 
     index = regex.lastIndex
-    if match[1] # variable
-      [key, params...] = parse_args(match[1])
+    if match[5] # variable
+      [key, params...] = parse_args(match[5])
       result.push(['vararg', key, params])
-    else if match[2]
-      if match[2] == 'text'
-        result.push(['text', match[3]])
+    else if match[1] or match[6]
+      [tag,args] = if match[1] then [match[1],match[2]] else [match[6], match[7]]
+      if tag == 'text'
+        result.push(['text', args])
       else
-        [key, params...] = parse_args(match[3])
-        result.push([match[2], key, params])
-    else if match[4]
-      result.push(["end"+match[4], null])
+        [key, params...] = parse_args(args)
+        result.push([tag, key, params])
+    else if match[3] or match[8]
+      tag = match[3] or match[8]
+      result.push(["end"+tag, null])
 
   if index < str.length # post match
     result.push(['text', str.slice(index, str.length)])

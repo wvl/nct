@@ -56,6 +56,7 @@ cbGetFn = (cb, ctx, params) -> ctx.get(params[0], [], cb)
 compileAndRenders = [
   ["Hello", {}, "Hello"]
   ["Hello {title}", {title: "World!"}, "Hello World!"]
+  ["Hello { title }", {title: "World!"}, "Hello World!"]
   ["Hello {person.name}", {person: {name: "Joe"}}, "Hello Joe"]
   ["Hello {content name}", {content: cbGetFn, name: 'Joe'}, "Hello Joe"]
   [".if content post\n{post.title}\n./if", {content: cbGetFn, post: {title: 'Hello'}}, "Hello\n"]
@@ -66,6 +67,9 @@ compileAndRenders = [
   [".# posts\n{title}\n./#", {posts: [{'title': 'Hello'},{'title':'World'}]}, "Hello\nWorld\n"]
   [".# person\n{name}\n./#", {person: {'name': 'Joe'}}, "Joe\n"]
   [".# person\n./#", {person: {'name': 'Joe'}}, ""]
+
+  ["{if content post}{post.title}{/if}", {content: cbGetFn, post: {title: 'Hello'}}, "Hello"]
+  ["{# person}{name}{/# person}", {person: {'name': 'Joe'}}, "Joe"]
 ]
 
 compileAndRenders.forEach ([tmpl,ctx,toequal]) ->
@@ -73,6 +77,7 @@ compileAndRenders.forEach ([tmpl,ctx,toequal]) ->
     nct.renderTemplate tmpl, ctx, (err, result) ->
       t.same toequal, result
       t.done()
+
 
 atest "CompAndRender extends", ->
   nct.loadTemplate ".extends base\nHello\n.block main\nt\n./block", "t"
