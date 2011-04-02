@@ -16,7 +16,7 @@ templates = {}
 template_mapping = {}
 
 doRender = (tmpl, context, callback) ->
-  ctx = new Context(context)
+  ctx = if context instanceof Context then context else new Context(context)
   tmpl ctx, (err, result) ->
     return callback(err) if err
     result ctx, (err, rendered) ->
@@ -43,7 +43,7 @@ stampFn = (name, command) ->
     slots.push match[1]
 
   return (context, callback) ->
-    ctx = new Context(context)
+    ctx = if context instanceof Context then context else new Context(context)
 
     filled_slots = {}
     fa.each slots, ((key, callback) ->
@@ -54,7 +54,7 @@ stampFn = (name, command) ->
       stamped_name = name.replace /\{(.+?)\}/g, (matched, n) -> filled_slots[n]
 
       command ctx, (err, result) ->
-        callback(err, result, stamped_name)
+        callback(err, result, stamped_name, ctx.deps)
 
 nct.stamp = (name, context, callback) ->
   nct.load name, null, (err, tmpl) ->

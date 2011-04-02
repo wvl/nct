@@ -160,7 +160,7 @@ test "Stamp 2", ->
 
   nct.stamp "{year}/{slug}.html", ctx, (err, render, deps, stamping) ->
     async.mapSeries stamping, ((obj, callback) ->
-      render obj, (err, result, name) ->
+      render obj, (err, result, name, deps) ->
         callback(null, [name,result])
     ), (err, results) ->
       t.same e_results, results
@@ -174,7 +174,7 @@ atest "Stamp delays", ->
   results = {"1": "one\n","2": "two\n"}
   ctx = {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}], delay: delay}
   nct.stamp "{stamp}", ctx, (err, render, deps, stamping) ->
-    render stamping[0], (err, result, name) ->
+    render stamping[0], (err, result, name, deps) ->
       t.same "1", name
       t.same results[name], result
       t.done()
@@ -230,6 +230,9 @@ atest "Integration stamp", ->
       {title: "Second Post", slug: "second"}
     ]
     engine: "nc23"
+    asset: (callback, context, params, calledfrom) ->
+      context.deps[params[0]] = new Date().getTime()
+      callback(null, params[0])
 
   e_deps = ['_base','_footer'].map (f) -> path.join(__dirname, "fixtures/#{f}.nct")
   fs.readFile path.join(__dirname, "fixtures/{slug}.html.nct"), (err, f) ->
@@ -237,7 +240,10 @@ atest "Integration stamp", ->
     nct.stamp "{slug}.html", context, (err, render, deps, stamping) ->
       t.same e_deps, Object.keys(deps)
       async.forEach stamping, ((obj, callback) ->
-        render obj, (err, result, filename) ->
+        ctx = new nct.Context(context)
+        ctx = ctx.push(obj)
+        render ctx, (err, result, filename, deps) ->
+          t.same ['test.js'], Object.keys(deps)
           fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
             t.same(f.toString(), result)
             callback()
@@ -258,7 +264,7 @@ atest "Integration stamp outside block", ->
     nct.loadTemplate f.toString(), "{slug}.html"
     nct.stamp "{slug}.html", context, (err, render, deps, stamping) ->
       async.forEach stamping, ((obj, callback) ->
-        render obj, (err, result, filename) ->
+        render obj, (err, result, filename, deps) ->
           fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
             t.same(f.toString(), result)
             callback()
@@ -281,7 +287,7 @@ atest "Custom context lookups by command", ->
     nct.loadTemplate ".stamp view\n{title}\n./stamp", "{slug}"
     nct.stamp "{slug}", context, (err, render, deps, stamping) ->
       t.same "query", stamping
-      render {title: "One", slug: "1"}, (err, result, name) ->
+      render {title: "One", slug: "1"}, (err, result, name, deps) ->
         t.same "One\n", result
         t.same "1", name
         t.done()

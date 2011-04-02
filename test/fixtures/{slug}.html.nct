@@ -1,9 +1,10 @@
 .extends _base
 .block head
-<script src="test.js" />
+<script src="loader.js" />
 ./block
 .block body
 .stamp posts
 <h1>{title}</h1>
+<script src="{ asset test.js }" />
 ./stamp
 ./block body
