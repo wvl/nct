@@ -2,6 +2,7 @@ fs = require 'fs'
 path = require 'path'
 {debug,info} = require('triage')('debug')
 util = require 'util'
+fa = require 'fa'
 nct = require path.join(__dirname, "../lib/nct")
 
 suite "nct tests", {serial: true, stopOnFail: true}
@@ -159,7 +160,7 @@ test "Stamp 2", ->
     doit: true
 
   nct.stamp "{year}/{slug}.html", ctx, (err, render, deps, stamping) ->
-    async.mapSeries stamping, ((obj, callback) ->
+    fa.series().map stamping, ((obj, callback) ->
       render obj, (err, result, name, deps) ->
         callback(null, [name,result])
     ), (err, results) ->
@@ -239,7 +240,7 @@ atest "Integration stamp", ->
     nct.loadTemplate f.toString(), "{slug}.html" 
     nct.stamp "{slug}.html", context, (err, render, deps, stamping) ->
       t.same e_deps, Object.keys(deps)
-      async.forEach stamping, ((obj, callback) ->
+      fa.forEach stamping, ((obj, callback) ->
         ctx = new nct.Context(context)
         ctx = ctx.push(obj)
         render ctx, (err, result, filename, deps) ->
@@ -263,7 +264,7 @@ atest "Integration stamp outside block", ->
   fs.readFile path.join(__dirname, "fixtures/{slug}.2.html.nct"), (err, f) ->
     nct.loadTemplate f.toString(), "{slug}.html"
     nct.stamp "{slug}.html", context, (err, render, deps, stamping) ->
-      async.forEach stamping, ((obj, callback) ->
+      fa.forEach stamping, ((obj, callback) ->
         render obj, (err, result, filename, deps) ->
           fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
             t.same(f.toString(), result)
