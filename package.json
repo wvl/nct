@@ -2,4 +2,9 @@
 , "description": "Flexible, powerful, asynchronous templates for node.js and the browser."
 , "version": "0.0.1"
 , "main": "./lib/nct.js"
+, "author": "Wayne Larsen <wayne@larsen.st>"
+, "bin": {"nct": "./lib/cli.js"}
+, "dependencies": {
+    "nopt": "1.0.4"
+  }
 }

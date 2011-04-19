@@ -15,6 +15,10 @@ noisyPrint = (data) ->
   print data
   if data.toString('utf8').indexOf('In') is 0
     exec 'afplay ~/.autotest.d/sound/sound_fx/red.mp3 2>&1 >/dev/null'
+  else if data.toString('utf8').match(/cli/)
+    cmd = "echo '#!/usr/bin/env node' > header && cat header lib/cli.js > cli"
+    cmd += "&& chmod 755 cli && mv cli lib/cli.js && rm header"
+    exec cmd
 
 task 'watch', 'Run development source watcher', ->
   relay 'coffee', ['-w', '-c', '-o', 'lib/', 'src/'], noisyPrint
@@ -38,4 +42,3 @@ task "test", "Run test", ->
 
 task "testwatch", "Run test", ->
   relay 'nutter', ['--watch','--verbose','test'], noisyError
-

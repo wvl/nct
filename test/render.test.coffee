@@ -1,9 +1,8 @@
 fs = require 'fs'
 path = require 'path'
-{debug,info} = require('triage')('debug')
 util = require 'util'
 fa = require 'fa'
-nct = require path.join(__dirname, "../lib/nct")
+nct = if window? then require('nct') else require path.join(__dirname, "../lib/nct")
 
 suite "nct tests", {serial: true, stopOnFail: true}
 
@@ -78,7 +77,7 @@ compileAndRenders = [
 ]
 
 compileAndRenders.forEach ([tmpl,ctx,toequal]) ->
-  atest "CompAndRender #{tmpl.replace(/\n/g,' | ')}", ->
+  atest "CompAndRender #{_.escapeHTML(tmpl.replace(/\n/g,' | '))}", ->
     nct.renderTemplate tmpl, ctx, (err, result) ->
       t.same toequal, result
       t.done()
@@ -126,12 +125,13 @@ atest "CompAndRender partial recursive", ->
     t.same "1\n1.1\n1.1.1\n", result
     t.done()
 
-atest "Render include", ->
-  include_path = path.join(__dirname, 'fixtures', 'example.txt')
-  nct.loadTemplate ".include #inc", "t"
-  nct.render "t", {inc: include_path}, (err, result) ->
-    t.same "  Hello World\n", result
-    t.done()
+unless window?
+  atest "Render include", ->
+    include_path = path.join(__dirname, 'fixtures', 'example.txt')
+    nct.loadTemplate ".include #inc", "t"
+    nct.render "t", {inc: include_path}, (err, result) ->
+      t.same "  Hello World\n", result
+      t.done()
 
 atest "Stamp 1", ->
   nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{stamp}"
@@ -180,132 +180,134 @@ atest "Stamp delays", ->
       t.same results[name], result
       t.done()
 
-atest "Asynchronous context function", ->
-  jsonfile = path.join(__dirname, "fixtures/post.json")
-  # fs.writeFileSync jsonfile, JSON.stringify({"title": "Hello World"})
-  context =
-    content: (callback, context, params) ->
-      filename = path.join(__dirname, "fixtures/#{params[0]}.json")
-      fs.readFile filename, (err, f) ->
-        context.deps[filename] = new Date().getTime()
-        callback(null, JSON.parse(f.toString()))
+unless window? # TODO: make the following tests work in the browser.
 
-  nct.loadTemplate ".# content post\n{title}\n./#", "t"
-  nct.render "t", context, (err, result, deps) ->
-    t.same "Hello World\n", result
-    t.same [jsonfile], Object.keys(deps)
-    t.done()
+  atest "Asynchronous context function", ->
+    jsonfile = path.join(__dirname, "fixtures/post.json")
+    # fs.writeFileSync jsonfile, JSON.stringify({"title": "Hello World"})
+    context =
+      content: (callback, context, params) ->
+        filename = path.join(__dirname, "fixtures/#{params[0]}.json")
+        fs.readFile filename, (err, f) ->
+          context.deps[filename] = new Date().getTime()
+          callback(null, JSON.parse(f.toString()))
 
-contexts =
-  'simple': {}
-  'example':
-    title: 'Hello World'
-    post: true
-  'page':
-    title: "Hello World"
-    engine: "nct"
+    nct.loadTemplate ".# content post\n{title}\n./#", "t"
+    nct.render "t", context, (err, result, deps) ->
+      t.same "Hello World\n", result
+      t.same [jsonfile], Object.keys(deps)
+      t.done()
 
-e_deps =
-  'example': []
-  'page': ['_base','_footer']
+  contexts =
+    'simple': {}
+    'example':
+      title: 'Hello World'
+      post: true
+    'page':
+      title: "Hello World"
+      engine: "nct"
 
-nct.onLoad = (name, callback) ->
-  filename = path.join(__dirname, "fixtures/#{name}.nct")
-  fs.readFile filename, (err, f) ->
-    callback(null, f.toString(), filename)
+  e_deps =
+    'example': []
+    'page': ['_base','_footer']
 
-["example", "page"].forEach (tname) ->
-  atest "Integration #{tname}", ->
-    fs.readFile path.join(__dirname, "fixtures/#{tname}.nct"), (err, f) ->
-      nct.loadTemplate f.toString(), tname
-      nct.render tname, contexts[tname], (err, result, deps) ->
-        t.same e_deps[tname].map((f) -> path.join(__dirname, "fixtures/#{f}.nct")), Object.keys(deps)
-        fs.readFile path.join(__dirname, "fixtures/#{tname}.txt"), (err, f) ->
-          t.same(f.toString(), result)
+  nct.onLoad = (name, callback) ->
+    filename = path.join(__dirname, "fixtures/#{name}.nct")
+    fs.readFile filename, (err, f) ->
+      callback(null, f.toString(), filename)
+
+  ["example", "page"].forEach (tname) ->
+    atest "Integration #{tname}", ->
+      fs.readFile path.join(__dirname, "fixtures/#{tname}.nct"), (err, f) ->
+        nct.loadTemplate f.toString(), tname
+        nct.render tname, contexts[tname], (err, result, deps) ->
+          t.same e_deps[tname].map((f) -> path.join(__dirname, "fixtures/#{f}.nct")), Object.keys(deps)
+          fs.readFile path.join(__dirname, "fixtures/#{tname}.txt"), (err, f) ->
+            t.same(f.toString(), result)
+            t.done()
+
+  atest "Integration stamp", ->
+    context =
+      posts: [
+        {title: "First Post", slug: "first"}
+        {title: "Second Post", slug: "second"}
+      ]
+      engine: "nc23"
+      asset: (callback, context, params, calledfrom) ->
+        context.deps[params[0]] = new Date().getTime()
+        callback(null, params[0])
+
+    e_deps = ['_base','_footer'].map (f) -> path.join(__dirname, "fixtures/#{f}.nct")
+    fs.readFile path.join(__dirname, "fixtures/{slug}.html.nct"), (err, f) ->
+      nct.loadTemplate f.toString(), "{slug}.html" 
+      nct.stamp "{slug}.html", context, (err, render, deps, stamping) ->
+        t.same e_deps, Object.keys(deps)
+        fa.forEach stamping, ((obj, callback) ->
+          ctx = new nct.Context(context)
+          ctx = ctx.push(obj)
+          render ctx, (err, result, filename, deps) ->
+            t.same ['test.js'], Object.keys(deps)
+            fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
+              t.same(f.toString(), result)
+              callback()
+              # t.same deps, Object.keys(nct.deps('{slug}.html'))
+        ), (err, results) ->
           t.done()
 
-atest "Integration stamp", ->
-  context =
-    posts: [
-      {title: "First Post", slug: "first"}
-      {title: "Second Post", slug: "second"}
-    ]
-    engine: "nc23"
-    asset: (callback, context, params, calledfrom) ->
-      context.deps[params[0]] = new Date().getTime()
-      callback(null, params[0])
+  atest "Integration stamp outside block", ->
+    context =
+      posts: [
+        {title: "First Post", slug: "first"}
+        {title: "Second Post", slug: "second"}
+      ]
+      engine: "nc23"
 
-  e_deps = ['_base','_footer'].map (f) -> path.join(__dirname, "fixtures/#{f}.nct")
-  fs.readFile path.join(__dirname, "fixtures/{slug}.html.nct"), (err, f) ->
-    nct.loadTemplate f.toString(), "{slug}.html" 
-    nct.stamp "{slug}.html", context, (err, render, deps, stamping) ->
-      t.same e_deps, Object.keys(deps)
-      fa.forEach stamping, ((obj, callback) ->
-        ctx = new nct.Context(context)
-        ctx = ctx.push(obj)
-        render ctx, (err, result, filename, deps) ->
-          t.same ['test.js'], Object.keys(deps)
-          fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
-            t.same(f.toString(), result)
-            callback()
-            # t.same deps, Object.keys(nct.deps('{slug}.html'))
-      ), (err, results) ->
+    deps = ['_base','_footer'].map (f) -> path.join(__dirname, "fixtures/#{f}.nct")
+    fs.readFile path.join(__dirname, "fixtures/{slug}.2.html.nct"), (err, f) ->
+      nct.loadTemplate f.toString(), "{slug}.html"
+      nct.stamp "{slug}.html", context, (err, render, deps, stamping) ->
+        fa.forEach stamping, ((obj, callback) ->
+          render obj, (err, result, filename, deps) ->
+            fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
+              t.same(f.toString(), result)
+              callback()
+              # t.same deps, Object.keys(nct.deps('{slug}.html'))
+        ), (err, results) ->
+          t.done()
+
+  atest "Custom context lookups by command", ->
+    context =
+      view: (cb,ctx,params,calledfrom) ->
+        if calledfrom == "stamp"
+          cb(null, "query")
+        else
+          cb(null, [{title: calledfrom, slug: "1"}])
+
+    nct.loadTemplate ".# view\n{title}\n./#", "t"
+    nct.render "t", context, (err, result) ->
+      t.same "each\n", result
+
+      nct.loadTemplate ".stamp view\n{title}\n./stamp", "{slug}"
+      nct.stamp "{slug}", context, (err, render, deps, stamping) ->
+        t.same "query", stamping
+        render {title: "One", slug: "1"}, (err, result, name, deps) ->
+          t.same "One\n", result
+          t.same "1", name
+          t.done()
+
+  atest "Failing template", ->
+    context =
+      view: (cb, ctx, params) ->
+        array = [{title: "title: #{x}"} for x in [0..1000]]
+        cb(null, array[0])
+
+    filename = path.join(__dirname, "fixtures/failing.html.nct")
+    fs.readFile filename, (err, fd) ->
+      nct.loadTemplate fd.toString(), filename
+      nct.render filename, context, (err, rendered, deps) ->
+        t.ok !err
+        # util.debug(rendered)
+        t.ok rendered.match(/title: 10/)
+        # info "rendered", rendered
         t.done()
-
-atest "Integration stamp outside block", ->
-  context =
-    posts: [
-      {title: "First Post", slug: "first"}
-      {title: "Second Post", slug: "second"}
-    ]
-    engine: "nc23"
-
-  deps = ['_base','_footer'].map (f) -> path.join(__dirname, "fixtures/#{f}.nct")
-  fs.readFile path.join(__dirname, "fixtures/{slug}.2.html.nct"), (err, f) ->
-    nct.loadTemplate f.toString(), "{slug}.html"
-    nct.stamp "{slug}.html", context, (err, render, deps, stamping) ->
-      fa.forEach stamping, ((obj, callback) ->
-        render obj, (err, result, filename, deps) ->
-          fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
-            t.same(f.toString(), result)
-            callback()
-            # t.same deps, Object.keys(nct.deps('{slug}.html'))
-      ), (err, results) ->
-        t.done()
-
-atest "Custom context lookups by command", ->
-  context =
-    view: (cb,ctx,params,calledfrom) ->
-      if calledfrom == "stamp"
-        cb(null, "query")
-      else
-        cb(null, [{title: calledfrom, slug: "1"}])
-
-  nct.loadTemplate ".# view\n{title}\n./#", "t"
-  nct.render "t", context, (err, result) ->
-    t.same "each\n", result
-
-    nct.loadTemplate ".stamp view\n{title}\n./stamp", "{slug}"
-    nct.stamp "{slug}", context, (err, render, deps, stamping) ->
-      t.same "query", stamping
-      render {title: "One", slug: "1"}, (err, result, name, deps) ->
-        t.same "One\n", result
-        t.same "1", name
-        t.done()
-
-atest "Failing template", ->
-  context =
-    view: (cb, ctx, params) ->
-      array = [{title: "title: #{x}"} for x in [0..1000]]
-      cb(null, array[0])
-
-  filename = path.join(__dirname, "fixtures/failing.html.nct")
-  fs.readFile filename, (err, fd) ->
-    nct.loadTemplate fd.toString(), filename
-    nct.render filename, context, (err, rendered, deps) ->
-      t.ok !err
-      # util.debug(rendered)
-      t.ok rendered.match(/title: 10/)
-      # info "rendered", rendered
-      t.done()
 

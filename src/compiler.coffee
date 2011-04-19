@@ -1,4 +1,3 @@
-{debug,info} = require 'triage'
 util = require 'util'
 
 tokenize = (str) ->

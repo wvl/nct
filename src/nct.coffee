@@ -1,11 +1,10 @@
 path         = require 'path'
 fs           = require 'fs'
-{debug,info} = require 'triage'
 _            = require 'underscore'
 fa           = require 'fa'
-compiler     = require './compiler'
-util         = require 'util'
 _.mixin        require 'underscore.string'
+
+compiler     = require './compiler'
 
 nct = {}
 nct.tokenize = compiler.tokenize
@@ -85,7 +84,7 @@ nct.loadTemplate = (tmplStr, name=null) ->
   try
     tmpl = nct.compile(tmplStr)
   catch e
-    util.debug "Compile error for #{name}"
+    # util.debug "Compile error for #{name}"
     throw e
   nct.register(tmpl, name)
 
@@ -107,13 +106,13 @@ nct.filters =
 do ->
   # Compile and register a template in this function namespace
   nct.register = (tmpl, name=null) ->
-    # debug "Register #{name}", tmpl
+    # util.debug "Register #{name}", tmpl
     try
       template = eval(tmpl)
       templates[name] = template if name
       template
     catch e
-      util.debug tmpl
+      # util.debug tmpl
       throw e
 
   applyFilters = (data, filters, context, callback) ->
