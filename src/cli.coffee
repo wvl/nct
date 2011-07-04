@@ -14,8 +14,8 @@ optional flags:
   --version display the version and exit
 '''
 
-usage_and_exit = (code=0) ->
-  sys.puts(usage)
+msg_and_exit = (msg,code=0) ->
+  sys.puts(msg)
   process.exit(code)
 
 knownOpts =
@@ -30,11 +30,11 @@ shortHands =
 
 parsed = nopt(knownOpts, shortHands, process.argv, 2)
 
-usage_and_exit() if parsed.help
+msg_and_exit(usage) if parsed.help
 
 if parsed.version
-  console.log "nct #{nct.version.join('.')}"
-  process.exit(0)
+  package = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json')))
+  msg_and_exit("nct "+package.version)
 
 inputs = parsed.argv.remain
 
@@ -44,10 +44,14 @@ fa.map inputs, ((input, callback) ->
     return callback(new Error("Unknown file #{input}")) unless exists
 
     fs.readFile input, (err, fd) ->
-      tmpl = nct.compile fd.toString()
-      callback(null, "nct.register('''#{tmpl}''', input)")
+      tmpl = nct.compileToString(fd.toString(), input)
+      callback(null, tmpl)
 ), (err, results) ->
-  console.log results.join("\n")
+  result = results.join('\n')
+  if parsed.output
+    fs.writeFile parsed.output, result, (err) ->
+  else
+    console.log result
 
 
 

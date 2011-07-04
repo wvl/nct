@@ -88,6 +88,10 @@ nct.loadTemplate = (tmplStr, name=null) ->
     throw e
   nct.register(tmpl, name)
 
+nct.compileToString = (tmplStr, name) ->
+  tmpl = nct.compile(tmplStr)
+  "nct.register(unescape('#{escape(tmpl)}'), unescape('#{escape(name)}'))\n"
+
 nct.clear = ->
   templates = {}
   template_mapping = {}
@@ -104,7 +108,7 @@ nct.filters =
   titleize: (v, ctx, cb) -> cb(null, _.titleize(v))
 
 do ->
-  # Compile and register a template in this function namespace
+  # Evaluate and register (if given a name) a template in this function namespace
   nct.register = (tmpl, name=null) ->
     # util.debug "Register #{name}", tmpl
     try
