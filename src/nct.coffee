@@ -10,9 +10,10 @@ nct = {}
 nct.tokenize = compiler.tokenize
 nct.compile  = compiler.compile
 
-# Template registry: name -> function
-templates = {}
-template_mapping = {}
+
+templates = {}         # Template registry: name -> function
+template_mapping = {}  # Tempate name: filename
+reverse_mapping = {}   # filename: Template name
 
 doRender = (tmpl, context, callback) ->
   ctx = if context instanceof Context then context else new Context(context)
@@ -73,6 +74,7 @@ nct.load = (name, context, callback) ->
         nct.loadTemplate src, name
         if templates[name]
           template_mapping[name] = filename if filename
+          reverse_mapping[filename] = name if filename
           context.deps[template_mapping[name] or name] = new Date().getTime() if context
           callback(null, templates[name])
         else
@@ -89,7 +91,16 @@ nct.loadTemplate = (tmplStr, name=null) ->
   nct.register(tmpl, name)
 
 nct.removeTemplate = (name) ->
-  delete templates[name]
+  if reverse_mapping[name]
+    template_name = reverse_mapping[name]
+    delete reverse_mapping[name]
+    delete template_mapping[template_name]
+    delete templates[template_name]
+  else
+    filename = template_mapping[name]
+    delete reverse_mapping[filename]
+    delete template_mapping[name]
+    delete templates[name]
 
 nct.compileToString = (tmplStr, name) ->
   tmpl = nct.compile(tmplStr)
