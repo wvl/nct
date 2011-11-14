@@ -1,6 +1,5 @@
 path = require 'path'
 fs   = require 'fs'
-sys  = require 'sys'
 nopt = require 'nopt'
 fa   = require 'fa'
 
@@ -15,7 +14,7 @@ optional flags:
 '''
 
 msg_and_exit = (msg,code=0) ->
-  sys.puts(msg)
+  console.log(msg)
   process.exit(code)
 
 knownOpts =
@@ -28,30 +27,31 @@ shortHands =
   h: '--help'
   o: '--output'
 
-parsed = nopt(knownOpts, shortHands, process.argv, 2)
-
-msg_and_exit(usage) if parsed.help
-
-if parsed.version
-  package = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json')))
-  msg_and_exit("nct "+package.version)
-
-inputs = parsed.argv.remain
+exports.run = ->
+  parsed = nopt(knownOpts, shortHands, process.argv, 2)
 
 
-fa.map inputs, ((input, callback) ->
-  path.exists input, (exists) ->
-    return callback(new Error("Unknown file #{input}")) unless exists
+  if parsed.version
+    package = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json')))
+    msg_and_exit("nct "+package.version)
 
-    fs.readFile input, (err, fd) ->
-      tmpl = nct.compileToString(fd.toString(), input)
-      callback(null, tmpl)
-), (err, results) ->
-  result = results.join('\n')
-  if parsed.output
-    fs.writeFile parsed.output, result, (err) ->
-  else
-    console.log result
+  inputs = parsed.argv.remain
+
+  msg_and_exit(usage) if parsed.help || !inputs.length
+
+  fa.map inputs, ((input, callback) ->
+    path.exists input, (exists) ->
+      return callback(new Error("Unknown file #{input}")) unless exists
+
+      fs.readFile input, (err, fd) ->
+        tmpl = nct.compileToString(fd.toString(), input)
+        callback(null, tmpl)
+  ), (err, results) ->
+    result = results.join('\n')
+    if parsed.output
+      fs.writeFile parsed.output, result, (err) ->
+    else
+      console.log result
 
 
 

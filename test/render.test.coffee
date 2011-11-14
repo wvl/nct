@@ -3,16 +3,17 @@ path = require 'path'
 util = require 'util'
 fa = require 'fa'
 nct = if window? then require('nct') else require path.join(__dirname, "../lib/nct")
+_ = require 'underscore'
 
 suite "nct tests", {serial: true, stopOnFail: true}
 
-atest "New Context", ->
+atest "New Context", (t) ->
   ctx = new nct.Context({"title": "hello"}, {})
   ctx.get 'title', [], (err, result) ->
     t.same "hello", result
     t.done()
 
-atest "Context push", ->
+atest "Context push", (t) ->
   ctx = new nct.Context({"title": "hello"}, {})
   ctx = ctx.push({"post": "Hi"})
   ctx.get 'title', [], (err, result) ->
@@ -21,7 +22,7 @@ atest "Context push", ->
       t.same 'Hi', result
       t.done()
 
-atest "Async function in context", ->
+atest "Async function in context", (t) ->
   fn = (cb) ->
     process.nextTick () -> cb(null, "Hi Async!")
   ctx = new nct.Context({"title": fn}, {})
@@ -29,7 +30,7 @@ atest "Async function in context", ->
     t.same "Hi Async!", result
     t.done()
 
-atest "Context with synchronous function", ->
+atest "Context with synchronous function", (t) ->
   ctx = new nct.Context({"title": () -> "Hello World"}, {})
   ctx.get 'title', [], (err, result) ->
     t.same "Hello World", result
@@ -44,7 +45,7 @@ contextAccessors = [
 ]
 
 contextAccessors.forEach ([attrs, context, expected]) ->
-  atest "Context accessors #{attrs}", ->
+  atest "Context accessors #{attrs}", (t) ->
     ctx = new nct.Context(context, {})
     ctx.mget attrs, [], (err, result) ->
       t.same expected, result
@@ -77,17 +78,17 @@ compileAndRenders = [
 ]
 
 compileAndRenders.forEach ([tmpl,ctx,toequal]) ->
-  atest "CompAndRender #{_.escapeHTML(tmpl.replace(/\n/g,' | '))}", ->
+  atest "CompAndRender #{_.escapeHTML(tmpl.replace(/\n/g,' | '))}", (t) ->
     nct.renderTemplate tmpl, ctx, (err, result) ->
       t.same toequal, result
       t.done()
 
-atest "template filter", ->
+atest "template filter", (t) ->
   nct.renderTemplate "{ body | t }", {body: "{realbody}", realbody: "Hello!"}, (err, result) ->
     t.same "Hello!", result
     t.done()
 
-atest "CompAndRender extends", ->
+atest "CompAndRender extends", (t) ->
   nct.loadTemplate ".extends base\nHello\n.block main\nt\n./block", "t"
   nct.loadTemplate "Base\n.block main\nBase\n./block", "base"
   nct.render "t", {}, (err, result, deps) ->
@@ -95,7 +96,7 @@ atest "CompAndRender extends", ->
     t.same "Base\nt\n", result
     t.done()
 
-atest "CompAndRender extends 3 levels", ->
+atest "CompAndRender extends 3 levels", (t) ->
   nct.loadTemplate ".extends med\nHello\n.block main\nMAIN\n./block", "t"
   nct.loadTemplate ".extends base\n.block sidebar\nSIDEBAR\n./block", "med"
   nct.loadTemplate "BASE\n.block main\nBASEMAIN\n./block\n.block sidebar\nsidebar base\n./block", "base"
@@ -103,14 +104,14 @@ atest "CompAndRender extends 3 levels", ->
     t.same "BASE\nMAIN\nSIDEBAR\n", result
     t.done()
 
-atest "CompAndRender partial", ->
+atest "CompAndRender partial", (t) ->
   nct.loadTemplate "{title}", "sub"
   nct.renderTemplate ".> sub", {title: "Hello"}, "t", (err, result, deps) ->
     t.same ["sub"], Object.keys(deps)
     t.same "Hello", result
     t.done()
 
-atest "CompAndRender programmatic partial", ->
+atest "CompAndRender programmatic partial", (t) ->
   nct.loadTemplate ".> #subtemplate", "t"
   nct.loadTemplate "{title}", "sub"
   nct.render "t", {title: "Hello", subtemplate: 'sub'}, (err, result, deps) ->
@@ -118,7 +119,7 @@ atest "CompAndRender programmatic partial", ->
     t.same "Hello", result
     t.done()
 
-atest "CompAndRender partial recursive", ->
+atest "CompAndRender partial recursive", (t) ->
   context = {name: '1', kids: [{name: '1.1', kids: [{name: '1.1.1', kids: []}] }] }
   nct.loadTemplate "{name}\n.# kids\n.> t\n./#", "t"
   nct.render "t", context, (err, result) ->
@@ -126,14 +127,14 @@ atest "CompAndRender partial recursive", ->
     t.done()
 
 unless window?
-  atest "Render include", ->
+  atest "Render include", (t) ->
     include_path = path.join(__dirname, 'fixtures', 'example.txt')
     nct.loadTemplate ".include #inc", "t"
     nct.render "t", {inc: include_path}, (err, result) ->
       t.same "  Hello World\n", result
       t.done()
 
-atest "Stamp 1", ->
+atest "Stamp 1", (t) ->
   nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{stamp}"
   ctx = {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}]}
   nct.stamp "{stamp}", ctx, (err, fn, deps, stamping) ->
@@ -144,14 +145,14 @@ atest "Stamp 1", ->
       t.same "1", stamped_name
       t.done()
 
-atest "Stamp from render", ->
+atest "Stamp from render", (t) ->
   nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{stamp}"
   ctx = {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}]}
   nct.render "{stamp}", ctx, (err, result, stamped_name) ->
     t.t -> [err.match(/Stamp called from render/), err]
     t.done()
 
-test "Stamp 2", ->
+atest "Stamp 2", (t) ->
   nct.loadTemplate "Hi\n .stamp view posts\n{title}\n./stamp\n", "{year}/{slug}.html"
   e_results = [["2010/first.html","Hi\none\n"],["2011/second.html","Hi\ntwo\n"]]
   ctx =
@@ -170,7 +171,7 @@ test "Stamp 2", ->
 delay = (cb, ctx, params) ->
   setTimeout (() -> cb(null, "")), params[0] || 10
 
-atest "Stamp delays", ->
+atest "Stamp delays", (t) ->
   nct.loadTemplate ".stamp posts\n{title}\n./stamp\n{delay}", "{stamp}"
   results = {"1": "one\n","2": "two\n"}
   ctx = {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}], delay: delay}
@@ -182,7 +183,7 @@ atest "Stamp delays", ->
 
 unless window? # TODO: make the following tests work in the browser.
 
-  atest "Asynchronous context function", ->
+  atest "Asynchronous context function", (t) ->
     jsonfile = path.join(__dirname, "fixtures/post.json")
     # fs.writeFileSync jsonfile, JSON.stringify({"title": "Hello World"})
     context =
@@ -217,7 +218,7 @@ unless window? # TODO: make the following tests work in the browser.
       callback(null, f.toString(), filename)
 
   ["example", "page"].forEach (tname) ->
-    atest "Integration #{tname}", ->
+    atest "Integration #{tname}", (t) ->
       fs.readFile path.join(__dirname, "fixtures/#{tname}.nct"), (err, f) ->
         nct.loadTemplate f.toString(), tname
         nct.render tname, contexts[tname], (err, result, deps) ->
@@ -226,7 +227,16 @@ unless window? # TODO: make the following tests work in the browser.
             t.same(f.toString(), result)
             t.done()
 
-  atest "Integration stamp", ->
+  ["example", "page"].forEach (tname) ->
+    atest "Integration #{tname} without load", (t) ->
+      nct.removeTemplate tname
+      nct.render tname, contexts[tname], (err, result, deps) ->
+        t.same e_deps[tname].map((f) -> path.join(__dirname, "fixtures/#{f}.nct")), Object.keys(deps)
+        fs.readFile path.join(__dirname, "fixtures/#{tname}.txt"), (err, f) ->
+          t.same(f.toString(), result)
+          t.done()
+
+  atest "Integration stamp", (t) ->
     context =
       posts: [
         {title: "First Post", slug: "first"}
@@ -238,23 +248,21 @@ unless window? # TODO: make the following tests work in the browser.
         callback(null, params[0])
 
     e_deps = ['_base','_footer'].map (f) -> path.join(__dirname, "fixtures/#{f}.nct")
-    fs.readFile path.join(__dirname, "fixtures/{slug}.html.nct"), (err, f) ->
-      nct.loadTemplate f.toString(), "{slug}.html" 
-      nct.stamp "{slug}.html", context, (err, render, deps, stamping) ->
-        t.same e_deps, Object.keys(deps)
-        fa.forEach stamping, ((obj, callback) ->
-          ctx = new nct.Context(context)
-          ctx = ctx.push(obj)
-          render ctx, (err, result, filename, deps) ->
-            t.same ['test.js'], Object.keys(deps)
-            fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
-              t.same(f.toString(), result)
-              callback()
-              # t.same deps, Object.keys(nct.deps('{slug}.html'))
-        ), (err, results) ->
-          t.done()
+    nct.stamp "{slug}.html", context, (err, render, deps, stamping) ->
+      t.same e_deps, Object.keys(deps)
+      fa.forEach stamping, ((obj, callback) ->
+        ctx = new nct.Context(context)
+        ctx = ctx.push(obj)
+        render ctx, (err, result, filename, deps) ->
+          t.same ['test.js'], Object.keys(deps)
+          fs.readFile path.join(__dirname, "fixtures/#{filename}"), (err, f) ->
+            t.same(f.toString(), result)
+            callback()
+            # t.same deps, Object.keys(nct.deps('{slug}.html'))
+      ), (err, results) ->
+        t.done()
 
-  atest "Integration stamp outside block", ->
+  atest "Integration stamp outside block", (t) ->
     context =
       posts: [
         {title: "First Post", slug: "first"}
@@ -275,7 +283,7 @@ unless window? # TODO: make the following tests work in the browser.
         ), (err, results) ->
           t.done()
 
-  atest "Custom context lookups by command", ->
+  atest "Custom context lookups by command", (t) ->
     context =
       view: (cb,ctx,params,calledfrom) ->
         if calledfrom == "stamp"
@@ -295,19 +303,14 @@ unless window? # TODO: make the following tests work in the browser.
           t.same "1", name
           t.done()
 
-  atest "Failing template", ->
+  atest "Failing template", (t) ->
     context =
       view: (cb, ctx, params) ->
-        array = [{title: "title: #{x}"} for x in [0..1000]]
+        array = [{title: "title: #{x}"} for x in [0..100]]
         cb(null, array[0])
 
-    filename = path.join(__dirname, "fixtures/failing.html.nct")
-    fs.readFile filename, (err, fd) ->
-      nct.loadTemplate fd.toString(), filename
-      nct.render filename, context, (err, rendered, deps) ->
-        t.ok !err
-        # util.debug(rendered)
-        t.ok rendered.match(/title: 10/)
-        # info "rendered", rendered
-        t.done()
+    nct.render "failing.html", context, (err, rendered, deps) ->
+      t.ok !err
+      t.ok rendered.match(/title: 10/)
+      t.done()
 

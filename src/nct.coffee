@@ -88,6 +88,9 @@ nct.loadTemplate = (tmplStr, name=null) ->
     throw e
   nct.register(tmpl, name)
 
+nct.removeTemplate = (name) ->
+  delete templates[name]
+
 nct.compileToString = (tmplStr, name) ->
   tmpl = nct.compile(tmplStr)
   "nct.register(unescape('#{escape(tmpl)}'), unescape('#{escape(name)}'))\n"

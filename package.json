@@ -3,8 +3,14 @@
 , "version": "0.0.1"
 , "main": "./lib/nct.js"
 , "author": "Wayne Larsen <wayne@larsen.st>"
-, "bin": {"nct": "./lib/cli.js"}
-, "dependencies": {
-    "nopt": "1.0.4"
+, "bin": {"nct": "./bin/nct"}
+, "dependencies":
+  { "nopt": "~1.0.4"
+  , "fa": "~0.1.0"
+  , "underscore": "~1.1.6"
+  , "underscore.string": "~1.1.5"
+  }
+, "devDependencies":
+  { "nutter": "~0.0"
   }
 }
