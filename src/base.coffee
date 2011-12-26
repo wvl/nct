@@ -215,7 +215,12 @@ init = (nct, _, fa) ->
     mget: (keys, params, callback) ->
       this.get keys[0], [], (err, result) ->
         for k in keys.slice(1)
-          result = result[k] if result != undefined
+          if result != undefined
+            value = result[k]
+            if typeof value == "function" && value.length == 0
+              result = value.call(result) 
+            else
+              result = value
         return callback(null, result)
 
     push: (newctx) ->

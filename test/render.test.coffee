@@ -60,6 +60,8 @@ compileAndRenders = [
   ["Hello {title}", {title: "World!"}, "Hello World!"]
   ["Hello { title }", {title: "World!"}, "Hello World!"]
   ["Hello {person.name}", {person: {name: "Joe"}}, "Hello Joe"]
+  ["Hello {person.name}", {person: (-> {name: "Joe"})}, "Hello Joe"]
+  ["Hello {person.name}", {person: (-> {name: (-> "Joe")})}, "Hello Joe"]
   ["Hello {content name}", {content: cbGetFn, name: 'Joe'}, "Hello Joe"]
   [".if content post\n{post.title}\n./if", {content: cbGetFn, post: {title: 'Hello'}}, "Hello\n"]
   [".# content post\n{title}\n./#", {content: cbGetFn, post: {title: 'Hello'}}, "Hello\n"]
