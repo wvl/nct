@@ -71,6 +71,7 @@ compileAndRenders = [
   [".# posts\n{title}\n./#", {posts: [{'title': 'Hello'},{'title':'World'}]}, "Hello\nWorld\n"]
   [".# person\n{name}\n./#", {person: {'name': 'Joe'}}, "Joe\n"]
   [".# person\n./#", {person: {'name': 'Joe'}}, ""]
+  [".# person\n.else\nNope\n./#", {person: []}, "Nope\n"]
 
   ["{if content post}{post.title}{/if}", {content: cbGetFn, post: {title: 'Hello'}}, "Hello"]
   ["{# person}{name}{/# person}", {person: {'name': 'Joe'}}, "Joe"]

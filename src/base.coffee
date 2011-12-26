@@ -113,16 +113,23 @@ init = (nct, _, fa) ->
             results[i] = result
             callback(null, combineResults(results)) if --pending == 0
 
-    each = (query, command) ->
+    each = (query, command, elsebody=null) ->
       return (context, callback) ->
         query context, (err, loopvar) ->
-          if _.isArray(loopvar)
-            fa.queue(10).map loopvar, ((item, callback) ->
-              command context.push(item), callback
-            ), (err, results) ->
-              callback(null, combineResults(results))
+          if loopvar && (!_.isArray(loopvar) || !_.isEmpty(loopvar))
+            if _.isArray(loopvar)
+              fa.queue(10).map loopvar, ((item, callback) ->
+                command context.push(item), callback
+              ), (err, results) ->
+                callback(null, combineResults(results))
+            else
+              command context.push(loopvar), callback
           else
-            command context.push(loopvar), callback
+            if elsebody
+              elsebody context, callback
+            else
+              callback null, (context, callback) ->
+                callback(null, "")
 
     block = (name, command) ->
       return (context, callback) ->

@@ -100,16 +100,26 @@ builders =
       else
         return false
     elsebody = if waselse
-      processNodes tokens, (tag) -> return true if tag=='endif'
+      processNodes tokens, (tag) -> tag=='endif'
     else
       null
     query = buildQuery(key, params, 'if')
     "doif(#{query}, #{body}" + if elsebody then ", #{elsebody})" else ")"
 
   '#': (key,params,tokens) ->
+    waselse = false
     query = buildQuery(key, params, 'each')
-    body = processNodes tokens, (tag) -> tag=='end#'
-    "each(#{query}, #{body})"
+    body = processNodes tokens, (tag) ->
+      if tag=='else' || tag=='end#'
+        waselse = true if tag=='else'
+        return true
+      else
+        return false
+    elsebody = if waselse
+      processNodes tokens, (tag) -> tag=='end#'
+    else
+      null
+    "each(#{query}, #{body}"+ if elsebody then ", #{elsebody})" else ")"
 
   'include': (key,params,tokens) ->
     query = conditionalQuery(key, params, 'include')
