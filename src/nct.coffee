@@ -51,7 +51,14 @@ nct.loadTemplate = (tmplStr, name=null) ->
     console.error "Error loading nct template: #{name}"
     console.error e
     throw e
-  nct.register(tmpl, name)
+
+  try
+    template = eval(tmpl)
+  catch e
+    console.error "Error evaluating template: #{name}"
+    throw e
+
+  nct.register(template, name)
 
 nct.removeTemplate = (name) ->
   if nct.reverse_mapping[name]
@@ -64,10 +71,6 @@ nct.removeTemplate = (name) ->
     delete nct.reverse_mapping[filename]
     delete nct.template_mapping[name]
     delete nct.templates[name]
-
-nct.compileToString = (tmplStr, name) ->
-  tmpl = nct.compile(tmplStr)
-  "nct.register(unescape('#{escape(tmpl)}'), unescape('#{escape(name)}'))\n"
 
 nct.clear = ->
   nct.templates = {}

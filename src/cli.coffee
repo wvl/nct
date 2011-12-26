@@ -9,8 +9,9 @@ usage = '''
 nct <tmpls> [-o output.js]
 
 optional flags:
-  --help    display this help and exit
-  --version display the version and exit
+  --dir <basedir>  strip this dir from the template names
+  --help           display this help and exit
+  --version        display the version and exit
 '''
 
 msg_and_exit = (msg,code=0) ->
@@ -18,18 +19,19 @@ msg_and_exit = (msg,code=0) ->
   process.exit(code)
 
 knownOpts =
+  dir: String
   version: Boolean
   help: Boolean
   output: String
 
 shortHands =
+  d: '--dir'
   v: '--version'
   h: '--help'
   o: '--output'
 
 exports.run = ->
   parsed = nopt(knownOpts, shortHands, process.argv, 2)
-
 
   if parsed.version
     package = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json')))
@@ -39,13 +41,17 @@ exports.run = ->
 
   msg_and_exit(usage) if parsed.help || !inputs.length
 
-  fa.map inputs, ((input, callback) ->
-    path.exists input, (exists) ->
+  fa.map inputs, ((filename, callback) ->
+    path.exists filename, (exists) ->
       return callback(new Error("Unknown file #{input}")) unless exists
 
-      fs.readFile input, (err, fd) ->
-        tmpl = nct.compileToString(fd.toString(), input)
-        callback(null, tmpl)
+      fs.readFile filename, (err, fd) ->
+        tmpl = nct.compile(fd.toString())
+
+        template_name = filename.replace(/\.nct$/, '')
+        template_name = template_name.replace(parsed.dir, '') if parsed.dir
+        result = "nct.register(#{tmpl}, '#{template_name}')\n"
+        callback(null, result)
   ), (err, results) ->
     result = results.join('\n')
     if parsed.output

@@ -57,11 +57,11 @@ processNodes = (tokens, processUntilFn) ->
     output.push(builders[token[0]].apply(builders, args))
     stamp = output.length if token[0] == 'stamp'
   if output.length > 1
-    "multi([#{output.join(',')}], #{stamp})" 
+    "nct.r.multi([#{output.join(',')}], #{stamp})" 
   else if output.length == 1
     output[0]
   else
-    "write('')"
+    "nct.r.write('')"
 
 # Convert array to eval'able string
 strArray = (input) ->
@@ -70,9 +70,9 @@ strArray = (input) ->
 
 buildQuery = (key, params, calledfrom) ->
   if key.length > 1
-    "mget(#{strArray(key)}, #{strArray(params)}, '#{calledfrom}')"
+    "nct.r.mget(#{strArray(key)}, #{strArray(params)}, '#{calledfrom}')"
   else
-    "get('#{key}', #{strArray(params)}, '#{calledfrom}')"
+    "nct.r.get('#{key}', #{strArray(params)}, '#{calledfrom}')"
 
 conditionalQuery = (key, params, calledfrom='') ->
   if key[0][0] != '#'
@@ -84,12 +84,12 @@ conditionalQuery = (key, params, calledfrom='') ->
 builders =
   'vararg': (key, params, filters) ->
     if key.length > 1
-      "mgetout(#{strArray(key)}, #{strArray(params)}, #{strArray(filters)})"
+      "nct.r.mgetout(#{strArray(key)}, #{strArray(params)}, #{strArray(filters)})"
     else
-      "getout('#{key}', #{strArray(params)}, #{strArray(filters)})"
+      "nct.r.getout('#{key}', #{strArray(params)}, #{strArray(filters)})"
 
   'text': (str) ->
-    "write('#{escapeJs(str)}')"
+    "nct.r.write('#{escapeJs(str)}')"
 
   'if': (key,params,tokens) ->
     waselse = false
@@ -104,7 +104,7 @@ builders =
     else
       null
     query = buildQuery(key, params, 'if')
-    "doif(#{query}, #{body}" + if elsebody then ", #{elsebody})" else ")"
+    "nct.r.doif(#{query}, #{body}" + if elsebody then ", #{elsebody})" else ")"
 
   '#': (key,params,tokens) ->
     waselse = false
@@ -119,30 +119,30 @@ builders =
       processNodes tokens, (tag) -> tag=='end#'
     else
       null
-    "each(#{query}, #{body}"+ if elsebody then ", #{elsebody})" else ")"
+    "nct.r.each(#{query}, #{body}"+ if elsebody then ", #{elsebody})" else ")"
 
   'include': (key,params,tokens) ->
     query = conditionalQuery(key, params, 'include')
-    "include(#{query})"
+    "nct.r.include(#{query})"
 
   '>': (key,params,tokens) ->
     query = conditionalQuery(key, params, 'partial')
-    "partial(#{query})"
+    "nct.r.partial(#{query})"
 
   'stamp': (key, params, tokens) ->
     body = processNodes tokens, (tag) -> tag=='endstamp'
     query = buildQuery(key, params, 'stamp')
-    "stamp(#{query}, #{body})"
+    "nct.r.stamp(#{query}, #{body})"
 
   'extends': (key, params, tokens) ->
     body = processNodes tokens
     query = conditionalQuery(key, params, 'extends')
-    "extend(#{query}, #{body})"
+    "nct.r.extend(#{query}, #{body})"
 
   'block': (key, params, tokens) ->
     body = processNodes tokens, (tag) -> tag=='endblock'
     query = conditionalQuery(key, params, 'block')
-    "block(#{query}, #{body})"
+    "nct.r.block(#{query}, #{body})"
 
 BS = /\\/g
 CR = /\r/g
