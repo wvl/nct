@@ -19,6 +19,9 @@ noisyPrint = (data) ->
 task 'watch', 'Run development source watcher', ->
   relay 'coffee', ['-w', '-c', '-o', 'lib/', 'src/'], noisyPrint
 
+task 'dist', 'Package nct for use in the browser', ->
+  exec 'coffee -b -p src/base.coffee > dist/nct.js'
+
 # task 'test', 'Run tests', ->
 #   relay 'coffee', ["#{__dirname}/test/runner.coffee"]
 #

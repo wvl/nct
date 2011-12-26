@@ -4,6 +4,7 @@ util = require 'util'
 fa = require 'fa'
 nct = if window? then require('nct') else require path.join(__dirname, "../lib/nct")
 _ = require 'underscore'
+_.str = require 'underscore.string'
 
 suite "nct tests", {serial: true, stopOnFail: true}
 
@@ -78,7 +79,7 @@ compileAndRenders = [
 ]
 
 compileAndRenders.forEach ([tmpl,ctx,toequal]) ->
-  atest "CompAndRender #{_.escapeHTML(tmpl.replace(/\n/g,' | '))}", (t) ->
+  atest "CompAndRender #{_.str.escapeHTML(tmpl.replace(/\n/g,' | '))}", (t) ->
     nct.renderTemplate tmpl, ctx, (err, result) ->
       t.same toequal, result
       t.done()
@@ -126,13 +127,13 @@ atest "CompAndRender partial recursive", (t) ->
     t.same "1\n1.1\n1.1.1\n", result
     t.done()
 
-unless window?
-  atest "Render include", (t) ->
-    include_path = path.join(__dirname, 'fixtures', 'example.txt')
-    nct.loadTemplate ".include #inc", "t"
-    nct.render "t", {inc: include_path}, (err, result) ->
-      t.same "  Hello World\n", result
-      t.done()
+# unless window?
+#   atest "Render include", (t) ->
+#     include_path = path.join(__dirname, 'fixtures', 'example.txt')
+#     nct.loadTemplate ".include #inc", "t"
+#     nct.render "t", {inc: include_path}, (err, result) ->
+#       t.same "  Hello World\n", result
+#       t.done()
 
 atest "Stamp 1", (t) ->
   nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{stamp}"
