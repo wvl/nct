@@ -78,6 +78,7 @@ compileAndRenders = [
 
   ["{ noescape | s }", {noescape: "<h1>Hello</h1>"}, "<h1>Hello</h1>"]
   ["<h1>{ noescape | s | titleize }</h1>", {noescape: "hello"}, "<h1>Hello</h1>"]
+  ["{ blah | s | t | h}", {}, ""]
   ["{ escape }", {escape: "<h1>Hello</h1>"}, "&lt;h1&gt;Hello&lt;/h1&gt;"]
 ]
 
