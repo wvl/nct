@@ -1,6 +1,6 @@
 { "name": "nct"
 , "description": "Flexible, powerful, asynchronous templates for node.js and the browser."
-, "version": "0.0.1"
+, "version": "0.5.0"
 , "main": "./lib/nct.js"
 , "author": "Wayne Larsen <wayne@larsen.st>"
 , "bin": {"nct": "./bin/nct"}
