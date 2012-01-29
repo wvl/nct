@@ -172,10 +172,7 @@ init = (nct, _, fa) ->
   nct.r.combineResults = (results) ->
     return (context, callback) ->
       fa.queue(10).reduce results, "", ((memo, result, callback) ->
-        try
-          result context, (err, r) -> callback(null, memo + r)
-        catch e
-          callback(new Error("Error rendering template"))
+        result context, (err, r) -> callback(null, memo + r)
       ), callback
 
 
@@ -199,7 +196,7 @@ init = (nct, _, fa) ->
       ctx = this
       while ctx
         if !_.isArray(ctx.head) && typeof ctx.head == "object"
-          value = ctx.head[key]
+          value = ctx.head && ctx.head[key]
           if value != undefined
             if typeof value == "function"
               if value.length == 0
@@ -217,8 +214,12 @@ init = (nct, _, fa) ->
     mget: (keys, params, callback) ->
       this.get keys[0], [], (err, result) ->
         for k in keys.slice(1)
-          if result != undefined
-            value = result[k]
+          if result != undefined and result != null
+            try
+              value = result[k]
+            catch e
+              return callback(null, "")
+
             if typeof value == "function" && value.length == 0
               result = value.call(result) 
             else

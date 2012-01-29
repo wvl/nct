@@ -37,12 +37,19 @@ atest "Context with synchronous function", (t) ->
     t.same "Hello World", result
     t.done()
 
+atest "Context.get from null", (t) ->
+  ctx = new nct.Context(null)
+  ctx.get 'title', [], (err, result) ->
+    t.same null, result
+    t.done()
+
 
 contextAccessors = [
   [["title"], {title: "Hello"}, "Hello"]
   [["post","title"], {post: {title: "Hello"}}, "Hello"]
   [["post","blah"], {post: ["Hello"]}, undefined]
-  [["post","blah", "blah"], {post: ["Hello"]}, undefined]
+  [["post","blah","blah"], {post: ["Hello"]}, undefined]
+  [["post","isnull","blah"], {post: null}, null]
 ]
 
 contextAccessors.forEach ([attrs, context, expected]) ->
