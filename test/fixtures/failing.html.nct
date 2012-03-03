@@ -73,9 +73,9 @@
  
     <h1>boingboing</h1> 
 
-.# view posts_all
+{# view posts_all}
   <li>{title}</li>
-./#
+{/#}
     <p> 
       <a href="http://github.com/documentcloud/underscore/">Underscore</a> is a
       utility-belt library for JavaScript that provides a lot of the

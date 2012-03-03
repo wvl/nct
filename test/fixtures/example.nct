@@ -1,3 +1,1 @@
-.if post
-  {title}
-./if
+{if post}  {title}{/if}

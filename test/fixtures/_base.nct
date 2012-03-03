@@ -1,15 +1,9 @@
 <html>
   <head>
-.block head
-head base
-./block
+{block head}head base{/block}
   </head>
   <body>
-.block body
-body base
-./block
-.block footer
-.> _footer
-./block footer
+{block body}body base{/block}
+{block footer}{> _footer}{/block footer}
   </body>
 </html>

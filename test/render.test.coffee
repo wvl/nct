@@ -74,15 +74,15 @@ describe "Compile and Render", ->
     ["Hello {person.name}", {person: (-> {name: "Joe"})}, "Hello Joe"]
     ["Hello {person.name}", {person: (-> {name: (-> "Joe")})}, "Hello Joe"]
     ["Hello {content name}", {content: cbGetFn, name: 'Joe'}, "Hello Joe"]
-    [".if content post\n{post.title}\n./if", {content: cbGetFn, post: {title: 'Hello'}}, "Hello\n"]
-    [".# content post\n{title}\n./#", {content: cbGetFn, post: {title: 'Hello'}}, "Hello\n"]
-    [".if doit\n{name}\n./if", {doit: true, name: "Joe"}, "Joe\n"]
-    [".if nope\n{name}\n./if", {nope: false, name: "Joe"}, ""]
-    [".if doit\n{name}\n.else\nNoope\n./if", {doit: false, name: "Joe"}, "Noope\n"]
-    [".# posts\n{title}\n./#", {posts: [{'title': 'Hello'},{'title':'World'}]}, "Hello\nWorld\n"]
-    [".# person\n{name}\n./#", {person: {'name': 'Joe'}}, "Joe\n"]
-    [".# person\n./#", {person: {'name': 'Joe'}}, ""]
-    [".# person\n.else\nNope\n./#", {person: []}, "Nope\n"]
+    ["{if content post}{post.title}{/if}", {content: cbGetFn, post: {title: 'Hello'}}, "Hello"]
+    ["{# content post}{title}{/#}", {content: cbGetFn, post: {title: 'Hello'}}, "Hello"]
+    ["{if doit}{name}{/if}", {doit: true, name: "Joe"}, "Joe"]
+    ["{if nope}{name}{/if}", {nope: false, name: "Joe"}, ""]
+    ["{if doit}{name}{else}Noope{/if}", {doit: false, name: "Joe"}, "Noope"]
+    ["{# posts}{title}{/#}", {posts: [{'title': 'Hello'},{'title':'World'}]}, "HelloWorld"]
+    ["{# person}{name}{/#}", {person: {'name': 'Joe'}}, "Joe"]
+    ["{# person}{/#}", {person: {'name': 'Joe'}}, ""]
+    ["{# person}{else}Nope{/#}", {person: []}, "Nope"]
 
     ["{if content post}{post.title}{/if}", {content: cbGetFn, post: {title: 'Hello'}}, "Hello"]
     ["{# person}{name}{/# person}", {person: {'name': 'Joe'}}, "Joe"]
@@ -104,30 +104,30 @@ describe "Compile and Render", ->
       done()
 
   it "CompAndRender extends", (done) ->
-    nct.loadTemplate ".extends base\nHello\n.block main\nt\n./block", "t"
-    nct.loadTemplate "Base\n.block main\nBase\n./block", "base"
+    nct.loadTemplate "{extends base}Hello{block main}t{/block}", "t"
+    nct.loadTemplate "Base\n{block main}Base{/block}", "base"
     nct.render "t", {}, (err, result, deps) ->
       e(Object.keys(deps)).to.eql ["base"]
-      e(result).to.equal "Base\nt\n"
+      e(result).to.equal "Base\nt"
       done()
 
   it "CompAndRender extends 3 levels", (done) ->
-    nct.loadTemplate ".extends med\nHello\n.block main\nMAIN\n./block", "t"
-    nct.loadTemplate ".extends base\n.block sidebar\nSIDEBAR\n./block", "med"
-    nct.loadTemplate "BASE\n.block main\nBASEMAIN\n./block\n.block sidebar\nsidebar base\n./block", "base"
+    nct.loadTemplate "{extends med}Hello{block main}MAIN\n{/block}", "t"
+    nct.loadTemplate "{extends base}{block sidebar}SIDEBAR\n{/block}", "med"
+    nct.loadTemplate "BASE\n{block main}BASEMAIN{/block}{block sidebar}sidebar base{/block}", "base"
     nct.render "t", {}, (err, result) ->
       e(result).to.equal "BASE\nMAIN\nSIDEBAR\n"
       done()
 
   it "CompAndRender partial", (done) ->
     nct.loadTemplate "{title}", "sub"
-    nct.renderTemplate ".> sub", {title: "Hello"}, "t", (err, result, deps) ->
+    nct.renderTemplate "{> sub}", {title: "Hello"}, "t", (err, result, deps) ->
       e(Object.keys(deps)).to.eql ["sub"]
       e(result).to.equal "Hello"
       done()
 
   it "CompAndRender programmatic partial", (done) ->
-    nct.loadTemplate ".> #subtemplate", "t"
+    nct.loadTemplate "{> #subtemplate}", "t"
     nct.loadTemplate "{title}", "sub"
     nct.render "t", {title: "Hello", subtemplate: 'sub'}, (err, result, deps) ->
       e(Object.keys(deps)).to.eql ["sub"]
@@ -136,7 +136,7 @@ describe "Compile and Render", ->
 
   it "CompAndRender partial recursive", (done) ->
     context = {name: '1', kids: [{name: '1.1', kids: [{name: '1.1.1', kids: []}] }] }
-    nct.loadTemplate "{name}\n.# kids\n.> t\n./#", "t"
+    nct.loadTemplate "{name}\n{# kids}{> t}{/#}", "t"
     nct.render "t", context, (err, result) ->
       e(result).to.equal "1\n1.1\n1.1.1\n"
       done()
@@ -151,25 +151,25 @@ describe "Stamping", ->
   #       t.done()
 
   it "Stamp 1", (done) ->
-    nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{stamp}"
+    nct.loadTemplate "{stamp posts}{title}{/stamp}", "{stamp}"
     ctx = {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}]}
     nct.stamp "{stamp}", ctx, (err, fn, deps, stamping) ->
       e(stamping).to.equal ctx.posts
       # info "RESULT", result
       fn stamping[0], (err, result, stamped_name) ->
-        e(result).to.equal "one\n"
+        e(result).to.equal "one"
         e(stamped_name).to.equal "1"
         done()
 
   it "Stamp from render", (done) ->
-    nct.loadTemplate ".stamp posts\n{title}\n./stamp", "{stamp}"
+    nct.loadTemplate "{stamp posts}{title}{/stamp}", "{stamp}"
     ctx = {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}]}
     nct.render "{stamp}", ctx, (err, result, stamped_name) ->
       e(err).to.match /Stamp called from render/
       done()
 
   it "Stamp 2", (done) ->
-    nct.loadTemplate "Hi\n .stamp view posts\n{title}\n./stamp\n", "{year}/{slug}.html"
+    nct.loadTemplate "Hi\n{stamp view posts}{title}\n{/stamp}", "{year}/{slug}.html"
     e_results = [["2010/first.html","Hi\none\n"],["2011/second.html","Hi\ntwo\n"]]
     ctx =
       view: cbGetFn
@@ -188,7 +188,7 @@ describe "Stamping", ->
     setTimeout (() -> cb(null, "")), params[0] || 10
 
   it "Stamp delays", (done) ->
-    nct.loadTemplate ".stamp posts\n{title}\n./stamp\n{delay}", "{stamp}"
+    nct.loadTemplate "{stamp posts}{title}\n{/stamp}{delay}", "{stamp}"
     results = {"1": "one\n","2": "two\n"}
     ctx = {posts: [{title: "one", stamp: "1"}, {title: "two", stamp: "2"}], delay: delay}
     nct.stamp "{stamp}", ctx, (err, render, deps, stamping) ->
@@ -198,14 +198,14 @@ describe "Stamping", ->
         done()
 
 
-  # it "Render big list should not be slow", (done) ->
-  #   hours = ({val: i+2, name: "#{i} X"} for i in [1..200])
-  #   nct.loadTemplate "{# hours }{val}:{name}{/#}", "list"
-  #   start = new Date()
-  #   nct.render "list", {hours}, (err, rendered) ->
-  #     dur = new Date() - start
-  #     e(dur).to.be.below 10
-  #     done()
+  it "Render big list should not be slow", (done) ->
+    hours = ({val: i+2, name: "#{i} X"} for i in [1..20])
+    nct.loadTemplate "{# hours }{val}:{name}{/#}", "list"
+    start = new Date()
+    nct.render "list", {hours}, (err, rendered) ->
+      dur = new Date() - start
+      e(dur).to.be.below 10
+      done()
 
 if not window? # TODO: make the following tests work in the browser.
 
@@ -221,7 +221,7 @@ if not window? # TODO: make the following tests work in the browser.
             context.deps[filename] = new Date().getTime()
             callback(null, JSON.parse(f.toString()))
 
-      nct.loadTemplate ".# content post\n{title}\n./#", "t"
+      nct.loadTemplate "{# content post}{title}\n{/#}", "t"
       nct.render "t", context, (err, result, deps) ->
         e(result).to.equal "Hello World\n"
         e(Object.keys(deps)).to.eql [jsonfile]
@@ -319,15 +319,15 @@ if not window? # TODO: make the following tests work in the browser.
           else
             cb(null, [{title: calledfrom, slug: "1"}])
 
-      nct.loadTemplate ".# view\n{title}\n./#", "t"
+      nct.loadTemplate "{# view}{title}{/#}", "t"
       nct.render "t", context, (err, result) ->
-        e(result).to.equal "each\n"
+        e(result).to.equal "each"
 
-        nct.loadTemplate ".stamp view\n{title}\n./stamp", "{slug}"
+        nct.loadTemplate "{stamp view}{title}{/stamp}", "{slug}"
         nct.stamp "{slug}", context, (err, render, deps, stamping) ->
           e(stamping).to.equal "query"
           render {title: "One", slug: "1"}, (err, result, name, deps) ->
-            e(result).to.equal "One\n", result
+            e(result).to.equal "One", result
             e(name).to.equal "1"
             done()
 

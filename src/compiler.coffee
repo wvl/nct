@@ -15,8 +15,6 @@ do ->
         \{(if|\#|\>|else|extends|block|stamp|include)(.*?)\}
       | \{/(if|\#|block|stamp)(.*?)\}
       |  \{(.*?)\}
-      | ^\s*\.(if|\#|\>|else|extends|block|stamp|include)(.*?)$\n?
-      | ^\s*\./(if|\#|block|stamp)(.*?)$\n?
     ///gim
     index = 0
     lastIndex = null
@@ -30,15 +28,15 @@ do ->
         [args,filters] = parse_filters(match[5])
         [key, params...] = parse_args(args)
         result.push(['vararg', key, params, filters])
-      else if match[1] or match[6]
+      else if match[1]
         [tag,args] = if match[1] then [match[1],match[2]] else [match[6], match[7]]
         if tag == 'text'
           result.push(['text', args])
         else
           [key, params...] = parse_args(args)
           result.push([tag, key, params])
-      else if match[3] or match[8]
-        tag = match[3] or match[8]
+      else if match[3]
+        tag = match[3]
         result.push(["end"+tag, null])
 
     if index < str.length # post match
