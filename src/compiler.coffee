@@ -14,7 +14,7 @@ do ->
     regex = ///
         \{(if|\#|\>|else|extends|block|stamp|include)(.*?)\}
       | \{/(if|\#|block|stamp)(.*?)\}
-      |  \{(.*?)\}
+      |  \{(-?)(.*?)\}
     ///gim
     index = 0
     lastIndex = null
@@ -24,10 +24,13 @@ do ->
         result.push(['text', str.slice(index, match.index)])
 
       index = regex.lastIndex
-      if match[5] # variable
-        [args,filters] = parse_filters(match[5])
+      if match[6] # variable
+        [args,filters] = parse_filters(match[6])
         [key, params...] = parse_args(args)
-        result.push(['vararg', key, params, filters])
+        if match[5]
+          result.push(['vararg_noescape', key, params, filters])
+        else
+          result.push(['vararg', key, params, filters])
       else if match[1]
         [tag,args] = if match[1] then [match[1],match[2]] else [match[6], match[7]]
         if tag == 'text'
@@ -84,6 +87,12 @@ do ->
         "nct.r.mgetout(#{strArray(key)}, #{strArray(params)}, #{strArray(filters)})"
       else
         "nct.r.getout('#{key}', #{strArray(params)}, #{strArray(filters)})"
+
+    'vararg_noescape': (key, params, filters) ->
+      if key.length > 1
+        "nct.r.mgetout_no(#{strArray(key)}, #{strArray(params)}, #{strArray(filters)})"
+      else
+        "nct.r.getout_no('#{key}', #{strArray(params)}, #{strArray(filters)})"
 
     'text': (str) ->
       "nct.r.write('#{escapeJs(str)}')"

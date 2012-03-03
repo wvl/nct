@@ -83,6 +83,18 @@ init = (nct, _, fa) ->
           callback null, (context, callback) ->
             callback(err, result)
 
+  nct.r.mgetout_no = (names, params, filters) ->
+    return (context, callback) ->
+      context.mget names, params, (err, result, skip=false) ->
+        callback null, (context, callback) ->
+          callback(err, result)
+
+  nct.r.getout_no = (name, params, filters) ->
+    return (context, callback) ->
+      context.get name, params, (err, result, skip=false) ->
+        callback null, (context, callback) ->
+          callback(err, result)
+
   nct.r.mget = (names, params, calledfrom) ->
     return (context, callback) ->
       context.mget names, params, callback, calledfrom

@@ -90,6 +90,8 @@ describe "Compile and Render", ->
     ["{ noescape | s }", {noescape: "<h1>Hello</h1>"}, "<h1>Hello</h1>"]
     ["{ blah | s | t | h}", {}, ""]
     ["{ escape }", {escape: "<h1>Hello</h1>"}, "&lt;h1&gt;Hello&lt;/h1&gt;"]
+
+    ["{- noescape}", {noescape: "<h1>Hello</h1>"}, "<h1>Hello</h1>"]
   ]
 
   compileAndRenders.forEach ([tmpl,ctx,toequal]) ->
@@ -199,12 +201,12 @@ describe "Stamping", ->
 
 
   it "Render big list should not be slow", (done) ->
-    hours = ({val: i+2, name: "#{i} X"} for i in [1..20])
-    nct.loadTemplate "{# hours }{val}:{name}{/#}", "list"
+    hours = ({val: i+2, name: "#{i} X"} for i in [1..1000])
+    nct.loadTemplate "{# hours }{-val}:{-name}{/#}", "list"
     start = new Date()
     nct.render "list", {hours}, (err, rendered) ->
       dur = new Date() - start
-      e(dur).to.be.below 10
+      e(dur).to.be.below 100
       done()
 
 if not window? # TODO: make the following tests work in the browser.
