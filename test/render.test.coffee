@@ -6,7 +6,7 @@ nct = if window? then require('nct') else require path.join(__dirname, "../lib/n
 _ = require 'underscore'
 _.str = require 'underscore.string'
 
-suite "nct tests", {serial: true, stopOnFail: true}
+suite "nct tests", {serial: true, stopOnFail: false}
 
 atest "New Context", (t) ->
   ctx = new nct.Context({"title": "hello"}, {})
@@ -192,6 +192,19 @@ atest "Stamp delays", (t) ->
       t.same "1", name
       t.same results[name], result
       t.done()
+
+
+atest "Render big list should not be slow", (t) ->
+  hours = ({val: i+2, name: "#{i} X"} for i in [1..200])
+  nct.loadTemplate "{# hours }{val}:{name}{/#}", "list"
+  start = new Date()
+  nct.render "list", {hours}, (err, rendered) ->
+    t.t ->
+      dur = new Date() - start
+      [dur < 10, dur]
+    # t.t -> [rendered.match(/3:1 X/), rendered]
+    # console.timeEnd("list")
+    t.done()
 
 unless window? # TODO: make the following tests work in the browser.
 

@@ -113,7 +113,7 @@ init = (nct, _, fa) ->
       query context, (err, loopvar) ->
         if loopvar && (!_.isArray(loopvar) || !_.isEmpty(loopvar))
           if _.isArray(loopvar)
-            fa.queue(10).map loopvar, ((item, callback) ->
+            fa.map loopvar, ((item, callback) ->
               command context.push(item), callback
             ), (err, results) ->
               callback(null, nct.r.combineResults(results))
