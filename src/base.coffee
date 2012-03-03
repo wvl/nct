@@ -1,5 +1,7 @@
 
 init = (nct, _, fa) ->
+  nct.escape = (str) ->
+    str.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g, '&quot;').replace(/'/g, "&apos;")
 
   nct.templates = {}         # Template registry: name -> function
   nct.template_mapping = {}  # Tempate name: filename
@@ -38,15 +40,13 @@ init = (nct, _, fa) ->
         throw new Error("Template not found: #{name}")
 
   nct.filters =
-    h: (v, ctx, cb) -> cb(null, _.str.escapeHTML(v))
+    h: (v, ctx, cb) -> cb(null, nct.escape(v))
     s: (v, ctx, cb) -> cb(null, v)
 
     # Render as an nct template
     t: (v, ctx, cb) ->
       tmpl = nct.loadTemplate(v)
       tmpl ctx, (err, result) -> result ctx, cb
-
-    titleize: (v, ctx, cb) -> cb(null, _.str.titleize(v))
 
   # Evaluate and register (if given a name) a template in this function namespace
   nct.register = (tmpl, name) ->

@@ -4,7 +4,6 @@ util = require 'util'
 fa = require 'fa'
 nct = if window? then require('nct') else require path.join(__dirname, "../lib/nct")
 _ = require 'underscore'
-_.str = require 'underscore.string'
 
 suite "nct tests", {serial: true, stopOnFail: false}
 
@@ -84,13 +83,12 @@ compileAndRenders = [
   ["{# person}{name}{/# person}", {person: {'name': 'Joe'}}, "Joe"]
 
   ["{ noescape | s }", {noescape: "<h1>Hello</h1>"}, "<h1>Hello</h1>"]
-  ["<h1>{ noescape | s | titleize }</h1>", {noescape: "hello"}, "<h1>Hello</h1>"]
   ["{ blah | s | t | h}", {}, ""]
   ["{ escape }", {escape: "<h1>Hello</h1>"}, "&lt;h1&gt;Hello&lt;/h1&gt;"]
 ]
 
 compileAndRenders.forEach ([tmpl,ctx,toequal]) ->
-  atest "CompAndRender #{_.str.escapeHTML(tmpl.replace(/\n/g,' | '))}", (t) ->
+  atest "CompAndRender #{nct.escape(tmpl.replace(/\n/g,' | '))}", (t) ->
     nct.renderTemplate tmpl, ctx, (err, result) ->
       t.same toequal, result
       t.done()

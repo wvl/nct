@@ -11,7 +11,6 @@
   { "nopt": "~1.0.4"
   , "fa": "~0.1.0"
   , "underscore": "~1.2.3"
-  , "underscore.string": "~2.0.0"
   }
 , "devDependencies":
   { "nutter": "~0.0"

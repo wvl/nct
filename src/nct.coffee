@@ -1,6 +1,5 @@
 _            = require 'underscore'
 fa           = require 'fa'
-_.str        = require 'underscore.string'
 
 compiler     = require './compiler'
 
