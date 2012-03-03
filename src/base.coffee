@@ -231,9 +231,8 @@ init = (nct, _, fa) ->
 
   return nct.Context
 
-try
-  window.nct = {}
-  init(window.nct, _, fa)
-catch e
+if typeof window is 'undefined'
   module.exports = init
-
+else
+  window.nct ?= {}
+  init(window.nct, _, fa)

@@ -17,7 +17,8 @@ noisyPrint = (data) ->
     exec 'afplay ~/.autotest.d/sound/sound_fx/red.mp3 2>&1 >/dev/null'
 
 task 'watch', 'Run development source watcher', ->
-  relay 'coffee', ['-w', '-c', '-o', 'lib/', 'src/'], noisyPrint
+  relay 'coffee', ['-w','-b', '-c', '-o', 'lib/', 'src/'], noisyPrint
+  relay 'coffee', ['-w','-b','-c', 'test/'], noisyPrint
 
 task 'dist', 'Package nct for use in the browser', ->
   exec 'coffee -b -p src/base.coffee > dist/nct.js'
@@ -37,7 +38,5 @@ noisyError = (data) ->
 
 
 task "test", "Run test", ->
-  relay 'nutter', ['--verbose','test'], noisyError
-
-task "testwatch", "Run test", ->
-  relay 'nutter', ['--watch','--verbose','test'], noisyError
+  # relay 'nutter', ['--verbose','test'], noisyError
+  exec "mocha -R spec test/render.test.coffee"
