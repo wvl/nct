@@ -94,6 +94,18 @@ init = (nct, _) ->
       return "" unless partial
       partial context
 
+  nct.r.block = (name, command) ->
+    return (context, callback) ->
+      context.blocks[name] ?= command(context)
+
+  nct.r.extend = (name, command) ->
+    return (context, callback) ->
+      base = nct.load name, context
+      return "" unless base
+      command(context)
+      base(context)
+
+
 
   class nct.Context
     constructor: (ctx, @tail) ->

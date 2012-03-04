@@ -121,3 +121,17 @@ describe "Sync Precompiled Sample Template", ->
   it "should render with noescape", ->
     result = nct.render "sample", {noListMsg: '<h1>nope</h1>'}
     e(result).to.match /\<h1\>nope\<\/h1\>/
+
+describe "Sync blocks", ->
+  it "should handle basic block", ->
+    nct.loadTemplate "Layout: {block main}override{/block}", "layout"
+    nct.loadTemplate "{extends layout}{block main}App{/block}", "app"
+    result = nct.render "app", {}
+    e(result).to.match /Layout: App/
+
+  it "extends 3 levels", ->
+    nct.loadTemplate "{extends med}Hello{block main}MAIN\n{/block}", "t"
+    nct.loadTemplate "{extends base}{block sidebar}SIDEBAR\n{/block}", "med"
+    nct.loadTemplate "BASE\n{block main}BASEMAIN{/block}{block sidebar}sidebar base{/block}", "base"
+    result = nct.render "t", {}
+    e(result).to.equal "BASE\nMAIN\nSIDEBAR\n"
