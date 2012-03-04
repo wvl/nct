@@ -78,6 +78,7 @@ if typeof window is 'undefined'
   compiler     = require './compiler'
 
   base = {}
+  base.compile = compiler.compile
 
   base.async = {}
   require('./async')(base.async, _, fa)

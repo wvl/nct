@@ -5,6 +5,8 @@ if !window?
   nct = require('../lib/nct').sync
   _ = require 'underscore'
   e = require('chai').expect
+  global.nct = nct  # using precompiled templates requires a global
+  require './fixtures/templates'
 else
   window.e = chai.expect
 
@@ -102,4 +104,20 @@ describe "Sync Compile and Render", ->
     start = new Date()
     result = nct.render "list", {hours}
     dur = new Date() - start
-    e(dur).to.be.below 20
+    e(dur).to.be.below 40
+
+describe "Sync Precompiled Sample Template", ->
+  it "Should render", ->
+    e(nct.templates['sample']).to.exist
+    result = nct.render "sample", {}
+    e(result).to.match /precompiled/
+
+  it "Should render with data", ->
+    d = {post: {title: 'Hello'}, list: [{name: 'Juan'}]}
+    result = nct.render "sample", d
+    e(result).to.match /precompiled/
+    e(result).to.match /\<li\>Juan\<\/li\>/
+
+  it "should render with noescape", ->
+    result = nct.render "sample", {noListMsg: '<h1>nope</h1>'}
+    e(result).to.match /\<h1\>nope\<\/h1\>/

@@ -1,0 +1,11 @@
+A test of precompiled templates.
+{if post}{post.title}{/if}
+{if list.length}
+<ul>
+  {# list}
+  <li>{name}</li>
+  {/#}
+</ul>
+{else}
+{- noListMsg}
+{/if}

@@ -39,4 +39,5 @@ noisyError = (data) ->
 
 task "test", "Run test", ->
   # relay 'nutter', ['--verbose','test'], noisyError
+  exec "./bin/nct --dir test/fixtures/ test/fixtures/sample.nct -o test/fixtures/templates.js"
   exec "mocha -R spec test/*.test.coffee"
