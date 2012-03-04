@@ -16,6 +16,8 @@ init = (nct, _) ->
   # Load a template: from registry, or fallback to onLoad
   nct.load = (name) ->
     return nct.templates[name] if nct.templates[name]
+    src = nct.onLoad(name) if nct.onLoad
+    return nct.loadTemplate(src, name) if src
     throw new Error("Template not found: #{name}")
 
   nct.filters = {}

@@ -74,6 +74,8 @@ init = (compile, sync, async, _, fa) ->
 if typeof window is 'undefined'
   _            = require 'underscore'
   fa           = require 'fa'
+  fs           = require 'fs'
+  path         = require 'path'
 
   compiler     = require './compiler'
 
@@ -89,7 +91,16 @@ if typeof window is 'undefined'
   init(compiler.compile, base.sync, base.async, _, fa)
 
   module.exports = base
-  # module.exports.Context = nct.Context
+
+  # comply with express api?
+  base.compile = (str, options) ->
+    base.sync.onLoad = (name) ->
+      filename = path.join(options.root, "#{name}.nct")
+      return fs.readFileSync(filename).toString() if path.existsSync(filename)
+      null
+
+    tmpl = base.sync.loadTemplate(str)
+    (ctx) -> base.sync.doRender(tmpl, ctx)
 
 else
   window.nct ?= {}
