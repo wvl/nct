@@ -18,7 +18,7 @@ noisyPrint = (data) ->
 
 task 'watch', 'Run development source watcher', ->
   relay 'coffee', ['-w','-b', '-c', '-o', 'lib/', 'src/'], noisyPrint
-  relay 'coffee', ['-w','-b','-c', 'test/'], noisyPrint
+  relay 'coffee', ['-w','-b','-c', '-o', 'test/browser', 'test/renderSync.test.coffee'], noisyPrint
 
 task 'dist', 'Package nct for use in the browser', ->
   exec 'coffee -b -p src/base.coffee > dist/nct.js'
@@ -39,4 +39,4 @@ noisyError = (data) ->
 
 task "test", "Run test", ->
   # relay 'nutter', ['--verbose','test'], noisyError
-  exec "mocha -R spec test/render.test.coffee"
+  exec "mocha -R spec test/*.test.coffee"

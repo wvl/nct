@@ -18,6 +18,6 @@
   , "mocha": "0.14.0"
   }
 , "scripts":
-  { "test": "mocha test/render.test.coffee"
+  { "test": "mocha test/*.test.coffee"
   }
 }

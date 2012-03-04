@@ -2,7 +2,7 @@ if !window?
   fs = require 'fs'
   path = require 'path'
   fa = require 'fa'
-  nct = require('../lib/nct')
+  nct = require('../lib/nct').async
   _ = require 'underscore'
   e = require('chai').expect
 else
@@ -206,7 +206,7 @@ describe "Stamping", ->
     start = new Date()
     nct.render "list", {hours}, (err, rendered) ->
       dur = new Date() - start
-      e(dur).to.be.below 100
+      e(dur).to.be.below 200 # async is slow!
       done()
 
 if not window? # TODO: make the following tests work in the browser.

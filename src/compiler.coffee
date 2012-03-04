@@ -178,6 +178,6 @@ do ->
     exports.compile = (src) ->
       processNodes(tokenize(src))
   else
-    nct.compile = (src) ->
+    window.nct ?= {}
+    window.nct.compile = (src) ->
       processNodes(tokenize(src))
-

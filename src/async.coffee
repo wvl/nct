@@ -241,8 +241,6 @@ init = (nct, _, fa) ->
     push: (newctx) ->
       return new nct.Context(newctx, this)
 
-  return nct.Context
-
 if typeof window is 'undefined'
   module.exports = init
 else
