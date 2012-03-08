@@ -36,7 +36,7 @@ init = (compile, sync, async, _, fa) ->
     tmpl = compile(tmplStr)
     nct = sync
     template = eval(tmpl)
-    sync.register(template, name) if name
+    sync.register(template, name) if name and sync.cache
     template
 
   async.renderTemplate = (source, context, name, callback) ->
@@ -80,7 +80,6 @@ if typeof window is 'undefined'
   compiler     = require './compiler'
 
   base = {}
-  base.compile = compiler.compile
 
   base.async = {}
   require('./async')(base.async, _, fa)
@@ -99,6 +98,8 @@ if typeof window is 'undefined'
       return fs.readFileSync(filename).toString() if path.existsSync(filename)
       null
 
+    # console.log "compile?", options
+    base.sync.cache = options?.settings?.env=='production'
     tmpl = base.sync.loadTemplate(str)
     (ctx) -> base.sync.doRender(tmpl, ctx)
 

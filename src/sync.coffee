@@ -1,6 +1,9 @@
 
 init = (nct, _) ->
+  nct.cache ?= true
+
   nct.escape = (str) ->
+    return "" unless str
     str.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g, '&quot;').replace(/'/g, "&apos;")
 
   nct.doRender = (tmpl, context) ->

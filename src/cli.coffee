@@ -4,6 +4,7 @@ nopt = require 'nopt'
 fa   = require 'fa'
 
 nct  = require './nct'
+compiler = require './compiler'
 
 usage = '''
 nct <tmpls> [-o output.js]
@@ -46,7 +47,7 @@ exports.run = ->
       return callback(new Error("Unknown file #{input}")) unless exists
 
       fs.readFile filename, (err, fd) ->
-        tmpl = nct.compile(fd.toString())
+        tmpl = compiler.compile(fd.toString())
 
         template_name = filename.replace(/\.nct$/, '')
         template_name = template_name.replace(parsed.dir, '') if parsed.dir
