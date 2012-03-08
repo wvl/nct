@@ -12,10 +12,12 @@ do ->
 
     # /\{\{(.*?)\}\}|\{(\#|if|else|extends|block)(.*?)\}\s*|\{\/(if|extends|block)(.*?)\}\s*/gi
     regex = ///
-        \{(if|\#|\>|else|extends|block|stamp|include)(.*?)\}
+        \{(if|\#|\>|else|extends|block|stamp|include|no)(.*?)\}
       | \{/(if|\#|block|stamp)(.*?)\}
-      |  \{(-?)(.*?)\}
+      | \{(-?)(.*?)\}
     ///gim
+
+    endNoTemplate = /\{\/no(.*?)\}/gim
     index = 0
     lastIndex = null
     result = []
@@ -32,8 +34,13 @@ do ->
         else
           result.push(['vararg', key, params, filters])
       else if match[1]
-        [tag,args] = if match[1] then [match[1],match[2]] else [match[6], match[7]]
-        if tag == 'text'
+        [tag,args] = [match[1],match[2]]
+        if tag == 'no'
+          match = endNoTemplate.exec(str)
+          if match.index > index # pre match
+            result.push(['text', str.slice(index, match.index)])
+          index = regex.lastIndex = endNoTemplate.lastIndex
+        else if tag == 'text'
           result.push(['text', args])
         else
           [key, params...] = parse_args(args)

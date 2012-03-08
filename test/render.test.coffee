@@ -92,6 +92,11 @@ describe "Compile and Render", ->
     ["{ escape }", {escape: "<h1>Hello</h1>"}, "&lt;h1&gt;Hello&lt;/h1&gt;"]
 
     ["{- noescape}", {noescape: "<h1>Hello</h1>"}, "<h1>Hello</h1>"]
+    ["{no}{hello}{/no}", {}, "{hello}"]
+    ["{if msg}{no}{hello}{/no}{/if}", {msg: true}, "{hello}"]
+    ["{if msg}{no}{hello}{/no}{/if}", {msg: false}, ""]
+    ["<script>{no}\nnew Something({});\n{/no}</script>", {}, "<script>\nnew Something({});\n</script>"]
+
   ]
 
   compileAndRenders.forEach ([tmpl,ctx,toequal]) ->

@@ -75,6 +75,10 @@ describe "Sync Compile and Render", ->
     ["{ title | upcase}", {title: 'hello world'}, "HELLO WORLD"]
     ["{ title | upcase | question}", {title: 'hello'}, "HELLO?"]
     ["{ escape }", {escape: "<h1>Hello</h1>"}, "&lt;h1&gt;Hello&lt;/h1&gt;"]
+    ["{no}{hello}{/no}", {}, "{hello}"]
+    ["{if msg}{notemplate}{hello}{/notemplate}{/if}", {msg: true}, "{hello}"]
+    ["{if msg}{no}{hello}{/no}{/if}", {msg: false}, ""]
+    ["<script>{no}\nnew Something({});\n{/no}</script>", {}, "<script>\nnew Something({});\n</script>"]
   ]
 
   compileAndRenders.forEach ([tmpl,ctx,toequal]) ->
