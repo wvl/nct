@@ -80,6 +80,7 @@ describe "Sync Compile and Render", ->
     ["{if msg}{no}{hello}{/no}{/if}", {msg: false}, ""]
     ["<script>{no}\nnew Something({});\n{/no}</script>", {}, "<script>\nnew Something({});\n</script>"]
     ["{# tags}{if last},{/if}{n}{/#}", {tags: [{n: '1'}, {n: '2'}]}, "1,2"]
+    ["{unless nope}{name}{/unless}", {nope: false, name: "Joe"}, "Joe"]
   ]
 
   compileAndRenders.forEach ([tmpl,ctx,toequal]) ->

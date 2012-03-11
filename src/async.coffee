@@ -111,6 +111,13 @@ init = (nct, _, fa) ->
         callback null, (context, callback) ->
           callback(null, "")
 
+  nct.r.unless = (query, body) ->
+    return (context, callback) ->
+      query context, (err, result) ->
+        return body(context, callback) unless result
+        callback null, (context, callback) ->
+          callback(null, "")
+
   nct.r.multi = (commands, withstamp) ->
     return (context, callback) ->
       pending = commands.length

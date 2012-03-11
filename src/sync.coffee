@@ -72,6 +72,12 @@ init = (nct, _) ->
       return elsebody(context) if elsebody
       ""
 
+  nct.r.unless = (query, body) ->
+    return (context, callback) ->
+      result = query context
+      return body(context) unless result
+      ""
+
   nct.r.multi = (commands, withstamp) ->
     return (context) ->
       results = []

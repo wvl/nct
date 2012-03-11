@@ -12,8 +12,8 @@ do ->
 
     # /\{\{(.*?)\}\}|\{(\#|if|else|extends|block)(.*?)\}\s*|\{\/(if|extends|block)(.*?)\}\s*/gi
     regex = ///
-        \{(if|\#|\>|else|extends|block|stamp|include|no)(.*?)\}
-      | \{/(if|\#|block|stamp)(.*?)\}
+        \{(if|\#|\>|else|unless|extends|block|stamp|include|no)(.*?)\}
+      | \{/(if|\#|block|stamp|unless)(.*?)\}
       | \{(-?)(.*?)\}
     ///gim
 
@@ -103,6 +103,11 @@ do ->
 
     'text': (str) ->
       "nct.r.write('#{escapeJs(str)}')"
+
+    'unless': (key, params, tokens) ->
+      body = processNodes tokens, (tag) -> tag=='endunless'
+      query = buildQuery(key, params, 'unless')
+      "nct.r.unless(#{query}, #{body})"
 
     'if': (key,params,tokens) ->
       waselse = false
