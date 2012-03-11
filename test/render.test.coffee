@@ -96,7 +96,7 @@ describe "Compile and Render", ->
     ["{if msg}{no}{hello}{/no}{/if}", {msg: true}, "{hello}"]
     ["{if msg}{no}{hello}{/no}{/if}", {msg: false}, ""]
     ["<script>{no}\nnew Something({});\n{/no}</script>", {}, "<script>\nnew Something({});\n</script>"]
-
+    ["{# tags}{if last},{/if}{n}{/#}", {tags: [{n: '1'}, {n: '2'}]}, "1,2"]
   ]
 
   compileAndRenders.forEach ([tmpl,ctx,toequal]) ->

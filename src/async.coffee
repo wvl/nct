@@ -125,8 +125,9 @@ init = (nct, _, fa) ->
       query context, (err, loopvar) ->
         if loopvar && (!_.isArray(loopvar) || !_.isEmpty(loopvar))
           if _.isArray(loopvar)
-            fa.map loopvar, ((item, callback) ->
-              command context.push(item), callback
+            length = loopvar.length
+            fa.with_index().map loopvar, ((item, i, callback) ->
+              command context.push({last: i==length-1, first: i==0}).push(item), callback
             ), (err, results) ->
               callback(null, nct.r.combineResults(results))
           else

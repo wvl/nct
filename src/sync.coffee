@@ -84,7 +84,10 @@ init = (nct, _) ->
       loopvar = query context
       if loopvar && (!_.isArray(loopvar) || !_.isEmpty(loopvar))
         if _.isArray(loopvar)
-          return loopvar.map((item) -> command context.push(item)).join('')
+          length = loopvar.length
+          result =_.map loopvar, (item, i) ->
+            command context.push({last: i==length-1, first: i==0}).push(item)
+          return result.join('')
         else
           return command context.push(loopvar)
       else
