@@ -44,7 +44,8 @@ describe "Sync Context", ->
       e(ctx.mget(attrs)).to.equal expected
 
 
-# cbGetFn = (cb, ctx, params) -> ctx.get(params[0], [], cb)
+getFn = (ctx, params) ->
+  ctx.get(params[0], [])
 
 describe "Sync Compile and Render", ->
   nct.filters.upcase = (v) -> v.toUpperCase()
@@ -59,6 +60,8 @@ describe "Sync Compile and Render", ->
     ["Hello {person.name}", {person: (-> {name: "Joe"})}, "Hello Joe"]
     ["Hello {person.name}", {person: {name: "<i>Joe</i>"}}, "Hello &lt;i&gt;Joe&lt;/i&gt;"]
     ["Hello {person.name}", {person: (-> {name: (-> "Joe")})}, "Hello Joe"]
+    ["Hello {content name}", {content: getFn, name: 'Joe'}, "Hello Joe"]
+    ["Hello {content.get name}", {content: {get: getFn}, name: 'Joe'}, "Hello Joe"]
     ["{if post}{post.title}{/if}", {post: {title: 'Hello'}}, "Hello"]
     ["{# post}{title}{/#}", {post: {title: 'Hello'}}, "Hello"]
     ["{if doit}{name}{/if}", {doit: true, name: "Joe"}, "Joe"]

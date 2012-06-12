@@ -127,14 +127,17 @@ init = (nct, _) ->
       @blocks = @tail?.blocks || {}
       @deps = @tail?.deps || {}
 
-    get: (key) ->
+    get: (key, params, calledfrom) ->
       ctx = this
       while ctx and ctx.head
         if !_.isArray(ctx.head) and typeof ctx.head == "object"
           value = ctx.head[key]
           if value != undefined
             if typeof value == "function"
-              return value.call(ctx.head)
+              if value.length == 0
+                return value.call(ctx.head)
+              else
+                return value.call(ctx.head, this, params, calledfrom)
             return value
         ctx = ctx.tail
       return ""
@@ -142,7 +145,7 @@ init = (nct, _) ->
     # Takes an array of keys to traverse down. Does not do any
     # backtracking -- the first key will determine which object
     # we traverse down.
-    mget: (keys) ->
+    mget: (keys, params) ->
       result = this.get(keys[0])
       return result if result is undefined or result is null
       for k in keys.slice(1)
@@ -151,8 +154,8 @@ init = (nct, _) ->
         catch e
           return ""
 
-        if typeof value == "function" && value.length == 0
-          result = value.call(result)
+        if typeof value == "function"
+          result = value.call(result, this, params)
         else
           result = value
       return result
