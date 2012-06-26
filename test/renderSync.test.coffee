@@ -2,7 +2,7 @@ if !window?
   fs = require 'fs'
   path = require 'path'
   fa = require 'fa'
-  nct = require('../lib/nct').sync
+  nct = require('../lib/nct')
   _ = require 'underscore'
   e = require('chai').expect
   global.nct = nct  # using precompiled templates requires a global

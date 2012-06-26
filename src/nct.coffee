@@ -80,29 +80,28 @@ if typeof window is 'undefined'
   compiler     = require './compiler'
 
   base = {}
+  require('./sync')(base, _)
 
   base.async = {}
   require('./async')(base.async, _, fa)
 
-  base.sync = {}
-  require('./sync')(base.sync, _)
 
-  init(compiler.compile, base.sync, base.async, _, fa)
+  init(compiler.compile, base, base.async, _, fa)
 
   module.exports = base
 
   # comply with express api?
   base.compile = (str, options) ->
-    base.sync.onLoad = (name) ->
+    base.onLoad = (name) ->
       filename = path.join(options.root, "#{name}.nct")
       existsSync = fs.existsSync || path.existsSync
       return fs.readFileSync(filename).toString() if existsSync(filename)
       null
 
     # console.log "compile?", options
-    base.sync.cache = options?.settings?.env=='production'
-    tmpl = base.sync.loadTemplate(str)
-    (ctx) -> base.sync.doRender(tmpl, ctx)
+    base.cache = options?.settings?.env=='production'
+    tmpl = base.loadTemplate(str)
+    (ctx) -> base.doRender(tmpl, ctx)
 
 else
   window.nct ?= {}
