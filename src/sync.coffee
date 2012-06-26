@@ -68,7 +68,9 @@ init = (nct, _) ->
   nct.r.doif = (query, body, elsebody=null) ->
     return (context, callback) ->
       result = query context
-      return body(context) if result
+      # empty arrays should be false
+      truthy = if _.isArray(result) then result.length else result
+      return body(context) if truthy
       return elsebody(context) if elsebody
       ""
 

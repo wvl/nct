@@ -106,7 +106,9 @@ init = (nct, _, fa) ->
   nct.r.doif = (query, body, elsebody=null) ->
     return (context, callback) ->
       query context, (err, result) ->
-        return body(context, callback) if result
+        # empty arrays should be false
+        truthy = if _.isArray(result) then result.length else result
+        return body(context, callback) if truthy
         return elsebody(context, callback) if elsebody
         callback null, (context, callback) ->
           callback(null, "")

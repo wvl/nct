@@ -79,6 +79,7 @@ describe "Compile and Render", ->
     ["{if doit}{name}{/if}", {doit: true, name: "Joe"}, "Joe"]
     ["{if nope}{name}{/if}", {nope: false, name: "Joe"}, ""]
     ["{if doit}{name}{else}Noope{/if}", {doit: false, name: "Joe"}, "Noope"]
+    ["{if array}NotEmpty{else}Empty{/if}", {array: []}, "Empty"]
     ["{# posts}{title}{/#}", {posts: [{'title': 'Hello'},{'title':'World'}]}, "HelloWorld"]
     ["{# person}{name}{/#}", {person: {'name': 'Joe'}}, "Joe"]
     ["{# person}{/#}", {person: {'name': 'Joe'}}, ""]
