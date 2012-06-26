@@ -31,19 +31,21 @@ shortHands =
   h: '--help'
   o: '--output'
 
+exists = fs.exists || path.exists
+
 exports.run = ->
   parsed = nopt(knownOpts, shortHands, process.argv, 2)
 
   if parsed.version
-    package = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json')))
-    msg_and_exit("nct "+package.version)
+    json = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json')))
+    msg_and_exit("nct "+json.version)
 
   inputs = parsed.argv.remain
 
   msg_and_exit(usage) if parsed.help || !inputs.length
 
   fa.map inputs, ((filename, callback) ->
-    path.exists filename, (exists) ->
+    exists filename, (exists) ->
       return callback(new Error("Unknown file #{input}")) unless exists
 
       fs.readFile filename, (err, fd) ->

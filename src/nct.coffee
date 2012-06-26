@@ -95,7 +95,8 @@ if typeof window is 'undefined'
   base.compile = (str, options) ->
     base.sync.onLoad = (name) ->
       filename = path.join(options.root, "#{name}.nct")
-      return fs.readFileSync(filename).toString() if path.existsSync(filename)
+      existsSync = fs.existsSync || path.existsSync
+      return fs.readFileSync(filename).toString() if existsSync(filename)
       null
 
     # console.log "compile?", options

@@ -1,4 +1,5 @@
-if !window?
+
+if typeof(window) == 'undefined'
   fs = require 'fs'
   path = require 'path'
   fa = require 'fa'
@@ -216,7 +217,7 @@ describe "Stamping", ->
       e(dur).to.be.below 200 # async is slow!
       done()
 
-if not window? # TODO: make the following tests work in the browser.
+if typeof window == "undefined" # TODO: make the following tests work in the browser.
 
   describe "integration", ->
 
