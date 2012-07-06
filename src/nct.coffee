@@ -77,16 +77,16 @@ if typeof window is 'undefined'
   fs           = require 'fs'
   path         = require 'path'
 
-  compiler     = require './compiler'
 
   base = {}
+  base.compiler     = require './compiler'
   require('./sync')(base, _)
 
   base.async = {}
   require('./async')(base.async, _, fa)
 
 
-  init(compiler.compile, base, base.async, _, fa)
+  init(base.compiler.compile, base, base.async, _, fa)
 
   module.exports = base
 
