@@ -98,13 +98,14 @@ exports.compile = (template) ->
       txt "{#{type} #{key}}"
       descend truthy
       if falsey
-        txt "{else}"
+        txt "\n{else}"
         descend falsey
       txt "{/#{type}}"
 
   locals = {}
+  locals.text = (text) -> txt text
   locals.ctx = (key) ->
-    txt "{#{key}}"
+    txt "{ #{key} }"
   locals.$if = conditional('if')
   locals.$unless = conditional('unless')
   locals.$each = (arr, body) ->

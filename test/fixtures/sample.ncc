@@ -1,0 +1,8 @@
+text "A test of precompiled templates."
+$if 'post', -> ctx('post.title')
+$if 'list.length', ->
+  ul ->
+    $each 'list', ->
+      li -> ctx 'name'
+, ->
+  ctx 'noListMsg'

@@ -5,6 +5,7 @@ fa   = require 'fa'
 
 nct  = require './nct'
 compiler = require './compiler'
+precompiler = require './coffee'
 
 usage = '''
 nct <tmpls> [-o output.js]
@@ -48,10 +49,10 @@ exports.run = ->
     exists filename, (exists) ->
       return callback(new Error("Unknown file #{input}")) unless exists
 
-      fs.readFile filename, (err, fd) ->
-        tmpl = compiler.compile(fd.toString())
-
-        template_name = filename.replace(/\.nct$/, '')
+      fs.readFile filename, 'utf8', (err, text) ->
+        text = precompiler.compile(text) if path.extname(filename)=='.ncc'
+        tmpl = compiler.compile(text)
+        template_name = path.basename(filename)
         template_name = template_name.replace(parsed.dir, '') if parsed.dir
         result = "nct.register(#{tmpl}, '#{template_name}')\n"
         callback(null, result)

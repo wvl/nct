@@ -63,3 +63,12 @@ describe "Test Coffeescript Precompiler", ->
 
   it "should render doctype", ->
     e(cc(-> doctype('5'))).to.equal '<!DOCTYPE html>'
+
+  it "should output text", ->
+    e(cc(-> text "hello")).to.equal 'hello'
+
+  it "should work with helper functions", ->
+    tmpl = ->
+      helper = (name) -> div name
+      helper('me')
+    e(cc(tmpl)).to.equal '<div>me</div>'
