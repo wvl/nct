@@ -35,7 +35,12 @@ exports.compile = (template) ->
     result += str.toString()
 
   descend = (strOrFn) ->
-    if _.isFunction(strOrFn) then strOrFn() else txt(strOrFn)
+    return strOrFn() if _.isFunction(strOrFn)
+    val = strOrFn.toString()
+    if val[0]=='@'
+      txt "{ #{val.slice(1)} }"
+    else
+      txt val
 
   renderIdClass = (str) ->
     classes = []

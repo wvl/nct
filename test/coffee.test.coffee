@@ -72,3 +72,6 @@ describe "Test Coffeescript Precompiler", ->
       helper = (name) -> div name
       helper('me')
     e(cc(tmpl)).to.equal '<div>me</div>'
+
+  it "should ouptut ctx functions directly with @prefix", ->
+    e(cc((-> div '@msg'), {msg: 'hi'})).to.equal "<div>hi</div>"
