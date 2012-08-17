@@ -57,3 +57,9 @@ describe "Test Coffeescript Precompiler", ->
     tmpl = -> $each 'people', -> li -> ctx('name')
     result = cc(tmpl, {people: [{name: 'joe'}, {name: 'jane'}]})
     e(result).to.equal '<li>joe</li><li>jane</li>'
+
+  it "should render self closing elements", ->
+    e(cc(-> hr())).to.equal '<hr/>'
+
+  it "should render doctype", ->
+    e(cc(-> doctype('5'))).to.equal '<!DOCTYPE html>'
