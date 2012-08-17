@@ -75,3 +75,10 @@ describe "Test Coffeescript Precompiler", ->
 
   it "should ouptut ctx functions directly with @prefix", ->
     e(cc((-> div '@msg'), {msg: 'hi'})).to.equal "<div>hi</div>"
+
+  it "should allow multiple statements in a block", ->
+    tmpl = -> div ->
+      a {href: '/'}, 'link'
+      text ' or '
+      a {href: '/back'}, 'cancel'
+    e(cc(tmpl)).to.equal '<div><a href="/">link</a> or <a href="/back">cancel</a></div>'
