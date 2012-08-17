@@ -27,3 +27,12 @@ describe "Test Coffeescript Precompiler", ->
     e(cc(-> div '.test.two', "hi")).to.equal '<div class="test two">hi</div>'
   it "should support ids and classes", ->
     e(cc(-> div '#myid.test.two', "hi")).to.equal '<div id="myid" class="test two">hi</div>'
+
+  it "should render attrs provided as object", ->
+    e(cc(-> div {name: 'joe'})).to.equal '<div name="joe"></div>'
+
+  it "should render attrs provided as object", ->
+    e(cc(-> div {data: {name: 'joe'}})).to.equal '<div data-name="joe"></div>'
+
+  it "should render nested tags", ->
+    e(cc(-> div -> span "Hello")).to.equal '<div><span>Hello</span></div>'

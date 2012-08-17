@@ -5,17 +5,19 @@ _ = require 'underscore'
 
 exports.compile = (template) ->
   template = if typeof template is 'function'
-    "var fn = "+template.toString()
+    template.toString()
+    # "var fn = "+template.toString()
   else
     js = coffee.compile template, {bare: true}
-    "var fn = function(){#{js}}"
+    "function(){#{js}}"
 
   # console.log "Template: ", typeof template, template
 
-  _result = ""
-  _txt = (str) -> _result += str.toString()
+  result = ""
 
-  _idclass = (str) ->
+  txt = (str='') -> result += str.toString()
+
+  renderIdClass = (str) ->
     classes = []
     id = null
     str.split('.').forEach (cls,i) ->
@@ -23,37 +25,59 @@ exports.compile = (template) ->
         id = cls.slice(1)
       else
         classes.push cls if cls
-    _txt " id=\"#{id}\"" if id
+    txt " id=\"#{id}\"" if id
     if classes.length
-      _txt " class=\"#{classes.join(' ')}\""
+      txt " class=\"#{classes.join(' ')}\""
 
-  div = (args...) ->
-    contents = ''
+  renderAttrs = (obj, prefix='') ->
+    for k,v of obj
+      # `true` is rendered as `selected="selected"`.
+      v = k if typeof v is 'boolean' and v
 
-    for a in args
-      switch typeof a
-        when 'function' then contents = a
-        when 'object' then attrs = a
-        when 'number','boolean' then contents = a
-        when 'string'
-          if args.length is 1
-            contents = a
-          else
-            if a is args[0]
-              idclass = a
-            else
+      # Prefixed attribute.
+      if typeof v is 'object' and v not instanceof Array
+        # `data: {icon: 'foo'}` is rendered as `data-icon="foo"`.
+        renderAttrs(v, prefix + k + '-')
+      # `undefined`, `false` and `null` result in the 
+      # attribute not being rendered.
+      else if v or v==0
+        # strings, numbers, arrays and functions are rendered "as is".
+        txt " #{prefix + k}=\"#{v}\""
+
+  renderTag = (name) ->
+    (args...) ->
+      # console.log "Render tag: ", name, result
+      for a in args
+        switch typeof a
+          when 'function' then contents = a
+          when 'object' then attrs = a
+          when 'number','boolean' then contents = a
+          when 'string'
+            if args.length is 1
               contents = a
+            else
+              if a is args[0]
+                idclass = a
+              else
+                contents = a
 
-    _txt "<div"
-    _idclass idclass if idclass
-    _txt ">"
-    _txt if _.isFunction(contents) then contents() else contents
-    _txt "</div>"
+      txt "<#{name}"
+      renderIdClass idclass if idclass
+      renderAttrs attrs if attrs
+      txt ">"
+      txt if _.isFunction(contents) then contents() else contents
+      txt "</#{name}>"
+      return
 
-  ctx = (key) ->
+  locals = {}
+  locals.ctx = (key) ->
     "{#{key}}"
 
-  eval(template)
-  # console.log "fn: ", fn
-  fn()
-  _result
+  "div span".split(' ').forEach (name) -> locals[name] = renderTag(name)
+
+  code = "with (locals) {"
+  code += "(#{template}).call();"
+  code += "}"
+  # console.log "fn: ", code
+  (new Function('locals',code))(locals)
+  result
