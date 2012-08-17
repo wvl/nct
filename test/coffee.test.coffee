@@ -36,3 +36,24 @@ describe "Test Coffeescript Precompiler", ->
 
   it "should render nested tags", ->
     e(cc(-> div -> span "Hello")).to.equal '<div><span>Hello</span></div>'
+
+  # it "should output the result of a function inside a tag", ->
+  #   e(cc(-> div -> "hello")).to.equal '<div>hello</div>'
+
+  it "should render if statements in template", ->
+    e(cc(-> $if 'name', -> div 'yes')).to.equal ''
+    result = cc((-> $if 'name', -> div 'yes'),{name: true})
+    e(result).to.equal '<div>yes</div>'
+
+  it "should render if/else statements in template", ->
+    e(cc(-> $if 'name', (-> div 'yes'), (-> div 'no'))).to.equal '<div>no</div>'
+
+  it "should render unless statements in template", ->
+    tmpl = -> $unless 'name', (-> div 'no')
+    e(cc(tmpl, {name: true})).to.equal ''
+    e(cc(tmpl, {name: false})).to.equal '<div>no</div>'
+
+  it "should render loops", ->
+    tmpl = -> $each 'people', -> li -> ctx('name')
+    result = cc(tmpl, {people: [{name: 'joe'}, {name: 'jane'}]})
+    e(result).to.equal '<li>joe</li><li>jane</li>'

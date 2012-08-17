@@ -15,7 +15,11 @@ exports.compile = (template) ->
 
   result = ""
 
-  txt = (str='') -> result += str.toString()
+  txt = (str='') ->
+    result += str.toString()
+
+  descend = (strOrFn) ->
+    if _.isFunction(strOrFn) then strOrFn() else txt(strOrFn)
 
   renderIdClass = (str) ->
     classes = []
@@ -65,19 +69,36 @@ exports.compile = (template) ->
       renderIdClass idclass if idclass
       renderAttrs attrs if attrs
       txt ">"
-      txt if _.isFunction(contents) then contents() else contents
+      descend contents if contents
       txt "</#{name}>"
       return
 
+  conditional = (type) ->
+    (key,truthy,falsey) ->
+      txt "{#{type} #{key}}"
+      descend truthy
+      if falsey
+        txt "{else}"
+        descend falsey
+      txt "{/#{type}}"
+
   locals = {}
   locals.ctx = (key) ->
-    "{#{key}}"
+    txt "{#{key}}"
+  locals.$if = conditional('if')
+  locals.$unless = conditional('unless')
+  locals.$each = (arr, body) ->
+    txt "{# #{arr}}"
+    descend body
+    txt "{/#}"
 
-  "div span".split(' ').forEach (name) -> locals[name] = renderTag(name)
+  "div span li".split(' ').forEach (name) -> locals[name] = renderTag(name)
 
   code = "with (locals) {"
   code += "(#{template}).call();"
   code += "}"
   # console.log "fn: ", code
-  (new Function('locals',code))(locals)
+  fn = new Function('locals',code)
+  fn(locals)
+  # console.log "result: ", result
   result
