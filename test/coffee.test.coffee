@@ -2,9 +2,10 @@
 coffee = require '../lib/coffee'
 e = require('chai').expect
 nct = require '../lib/nct'
+fs = require 'fs'
 
-cc = (fn, ctx={}) ->
-  tmpl = coffee.compile(fn)
+cc = (fn, ctx={}, dir) ->
+  tmpl = coffee.compile(fn, dir)
   fn = nct.loadTemplate(tmpl)
   fn(new nct.Context(ctx))
 
@@ -76,9 +77,34 @@ describe "Test Coffeescript Precompiler", ->
   it "should ouptut ctx functions directly with @prefix", ->
     e(cc((-> div '@msg'), {msg: 'hi'})).to.equal "<div>hi</div>"
 
+  it "should parse @ out of keys and values", ->
+    tmpl = -> div {k1: '@v1', '@k2': 'v2'}, '@msg'
+    r = cc(tmpl,{v1:'value1',k2:'key2',msg:'Hi'})
+    e(r).to.equal '<div k1="value1" key2="v2">Hi</div>'
+
+  it "should support context based class name with '.' accessor", ->
+    tmpl = -> div '.@test', -> span '.something.@error:username', ''
+    r = cc(tmpl, {test: 'one', error: {username: 'oops'}})
+    e(r).to.equal '<div class="one"><span class="something oops"></span></div>'
+
   it "should allow multiple statements in a block", ->
     tmpl = -> div ->
       a {href: '/'}, 'link'
       text ' or '
       a {href: '/back'}, 'cancel'
     e(cc(tmpl)).to.equal '<div><a href="/">link</a> or <a href="/back">cancel</a></div>'
+
+  it "should allow class definition with object", ->
+    tmpl = -> div {class: 'test'}, 'Hello'
+    e(cc(tmpl)).to.equal '<div class="test">Hello</div>'
+
+  # it "should allow multiple types of class definitions", ->
+  #   tmpl = -> div '.one', {class: 'two'}, 'Hello'
+  #   e(cc(tmpl)).to.equal '<div class="one two">Hello</div>'
+
+  # it "should allow requiring other files", ->
+  #   dir = __dirname+'/fixtures'
+  #   tmpl = fs.readFileSync(dir+'/signup.ncc', 'utf8')
+  #   result = cc(tmpl,dir)
+  #   # console.log("result: ", result)
+

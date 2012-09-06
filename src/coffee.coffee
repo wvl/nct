@@ -19,7 +19,7 @@ doctypes =
   'mobile': '<!DOCTYPE html PUBLIC "-//WAPFORUM//DTD XHTML Mobile 1.2//EN" "http://www.openmobilealliance.org/tech/DTD/xhtml-mobile12.dtd">'
   'ce': '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "ce-html-1.0-transitional.dtd">'
 
-exports.compile = (template) ->
+exports.compile = (template, dir='') ->
   template = if typeof template is 'function'
     template.toString()
     # "var fn = "+template.toString()
@@ -34,13 +34,12 @@ exports.compile = (template) ->
   txt = (str='') ->
     result += str.toString()
 
+  strOrContext = (str) ->
+    if str[0]=='@' then "{ #{str.slice(1)} }" else str
+
   descend = (strOrFn) ->
     return strOrFn() if _.isFunction(strOrFn)
-    val = strOrFn.toString()
-    if val[0]=='@'
-      txt "{ #{val.slice(1)} }"
-    else
-      txt val
+    txt strOrContext(strOrFn.toString())
 
   renderIdClass = (str) ->
     classes = []
@@ -49,7 +48,7 @@ exports.compile = (template) ->
       if i is 0 and cls[0] == '#'
         id = cls.slice(1)
       else
-        classes.push cls if cls
+        classes.push strOrContext(cls.replace(':','.')) if cls
     txt " id=\"#{id}\"" if id
     if classes.length
       txt " class=\"#{classes.join(' ')}\""
@@ -67,7 +66,11 @@ exports.compile = (template) ->
       # attribute not being rendered.
       else if v or v==0
         # strings, numbers, arrays and functions are rendered "as is".
-        txt " #{prefix + k}=\"#{v}\""
+        txt " "+prefix
+        descend(k)
+        txt '="'
+        descend(v)
+        txt '"'
 
   renderTag = (name, selfClosing=false) ->
     (args...) ->
@@ -117,6 +120,10 @@ exports.compile = (template) ->
     txt "{# #{arr}}"
     descend body
     txt "{/#}"
+  # locals.require = (pathname) ->
+  #   field = ->
+  #     div "OK"
+  #   {field}
 
   locals.doctype = (type='default') ->
     txt doctypes[type]
