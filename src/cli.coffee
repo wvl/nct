@@ -52,7 +52,7 @@ exports.run = ->
       fs.readFile filename, 'utf8', (err, text) ->
         text = precompiler.compile(text) if path.extname(filename)=='.ncc'
         tmpl = compiler.compile(text)
-        template_name = path.basename(filename)
+        template_name = filename.replace(/\.(nct|ncc)$/, '')
         template_name = template_name.replace(parsed.dir, '') if parsed.dir
         result = "nct.register(#{tmpl}, '#{template_name}')\n"
         callback(null, result)
