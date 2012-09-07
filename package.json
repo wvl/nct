@@ -1,7 +1,7 @@
 { "name": "nct"
 , "description": "Flexible, powerful, asynchronous (and synchronous) templates for node.js and the browser."
 , "keywords": ["template", "templates"]
-, "version": "0.8.0"
+, "version": "0.8.1"
 , "main": "./lib/nct.js"
 , "author": "Wayne Larsen <wayne@larsen.st>"
 , "homepage": "https://github.com/wvl/nct"
@@ -9,12 +9,12 @@
 , "bin": {"nct": "./bin/nct"}
 , "dependencies":
   { "nopt": "~1.0.10"
+  , "coffee-script": "~1.3.3"
   , "fa": "~1.0.1"
   , "underscore": "~1.3.3"
   }
 , "devDependencies":
   { "chai": "~1.1.0"
-  , "coffee-script": "~1.3.3"
   , "mocha": "~1.2.1"
   }
 , "scripts":
