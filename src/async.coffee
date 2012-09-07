@@ -1,11 +1,12 @@
 
 init = (nct, _, fa) ->
+  nct.cache ?= true
+
   nct.escape = (str) ->
     str.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g, '&quot;').replace(/'/g, "&apos;")
 
   nct.templates = {}         # Template registry: name -> function
   nct.template_mapping = {}  # Tempate name: filename
-  nct.reverse_mapping = {}   # filename: Template name
 
   nct.doRender = (tmpl, context, callback) ->
     ctx = if context instanceof nct.Context then context else new nct.Context(context)
@@ -28,12 +29,12 @@ init = (nct, _, fa) ->
     else
       if nct.onLoad
         nct.onLoad name, (err, src, filename) ->
-          nct.loadTemplate src, name
-          if nct.templates[name]
+          return callback(err) if err
+          tmpl = nct.loadTemplate src, name
+          if tmpl
             nct.template_mapping[name] = filename if filename
-            nct.reverse_mapping[filename] = name if filename
             context.deps[nct.template_mapping[name] or name] = new Date().getTime() if context
-            callback(null, nct.templates[name])
+            callback(null, tmpl)
           else
             throw new Error("After onLoad, not found #{name}")
       else
@@ -168,6 +169,7 @@ init = (nct, _, fa) ->
     return (context, callback) ->
       fa.if _.isFunction(name), ((cb) -> name(context, cb)), ((cb) -> cb(null, name)), (err, name) ->
         nct.load name, context, (err, thepartial) ->
+          return callback(err) if err
           thepartial context, callback
 
   # include = (query) ->

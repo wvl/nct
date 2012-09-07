@@ -1,6 +1,6 @@
 
 init = (nct, _) ->
-  nct.cache ?= true
+  nct.cache ?= false
 
   nct.escape = (str) ->
     return "" unless str

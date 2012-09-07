@@ -51,20 +51,12 @@ init = (compile, sync, async, _, fa) ->
     tmpl = compile(tmplStr)
     nct = async
     template = eval(tmpl)
-    async.register(template, name) if name
+    async.register(template, name) if name and async.cache
     template
 
   async.removeTemplate = (name) ->
-    if async.reverse_mapping[name]
-      template_name = async.reverse_mapping[name]
-      delete async.reverse_mapping[name]
-      delete async.template_mapping[template_name]
-      delete async.templates[template_name]
-    else
-      filename = async.template_mapping[name]
-      delete async.reverse_mapping[filename]
-      delete async.template_mapping[name]
-      delete async.templates[name]
+    delete async.template_mapping[name]
+    delete async.templates[name]
 
   async.clear = ->
     async.templates = {}
@@ -80,6 +72,7 @@ if typeof window is 'undefined'
 
   base = {}
   base.compiler     = require './compiler'
+  base.coffee       = require './coffee'
   require('./sync')(base, _)
 
   base.async = {}
@@ -91,17 +84,17 @@ if typeof window is 'undefined'
   module.exports = base
 
   # comply with express api?
-  base.compile = (str, options) ->
-    base.onLoad = (name) ->
-      filename = path.join(options.root, "#{name}.nct")
-      existsSync = fs.existsSync || path.existsSync
-      return fs.readFileSync(filename).toString() if existsSync(filename)
-      null
+  # base.compile = (str, options) ->
+  #   base.onLoad = (name) ->
+  #     filename = path.join(options.root, "#{name}.nct")
+  #     existsSync = fs.existsSync || path.existsSync
+  #     return fs.readFileSync(filename).toString() if existsSync(filename)
+  #     null
 
-    # console.log "compile?", options
-    base.cache = options?.settings?.env=='production'
-    tmpl = base.loadTemplate(str)
-    (ctx) -> base.doRender(tmpl, ctx)
+  #   # console.log "compile?", options
+  #   base.cache = options?.settings?.env=='production'
+  #   tmpl = base.loadTemplate(str)
+  #   (ctx) -> base.doRender(tmpl, ctx)
 
 else
   window.nct ?= {}
