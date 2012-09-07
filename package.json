@@ -1,7 +1,7 @@
 { "name": "nct"
 , "description": "Flexible, powerful, asynchronous (and synchronous) templates for node.js and the browser."
 , "keywords": ["template", "templates"]
-, "version": "0.7.0"
+, "version": "0.8.0"
 , "main": "./lib/nct.js"
 , "author": "Wayne Larsen <wayne@larsen.st>"
 , "homepage": "https://github.com/wvl/nct"
