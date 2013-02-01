@@ -17,12 +17,4 @@ system ideas for nc23, that is:
 Syntax
 ------
 
-### extends
-
-### body
-
-### each
-
-### if
-
-### stamp
+See [wiki](https://github.com/wvl/nct/wiki)
